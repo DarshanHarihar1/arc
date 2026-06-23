@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 47% 7%;
+    --foreground: 210 40% 96%;
+    --card: 222 40% 11%;
+    --card-foreground: 210 40% 96%;
+    --primary: 152 65% 45%;
+    --primary-foreground: 222 47% 7%;
+    --muted: 222 30% 16%;
+    --muted-foreground: 215 20% 65%;
+    --border: 222 30% 18%;
+    --input: 222 30% 18%;
+    --ring: 152 65% 45%;
+    --radius: 0.75rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Respect the iOS safe area when installed to the home screen. */
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
