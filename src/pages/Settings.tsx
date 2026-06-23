@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/auth/AuthProvider";
 import { supabase } from "@/lib/supabase";
+import { MedicationsManager } from "@/components/MedicationsManager";
 
 export function Settings() {
   const { signOut } = useAuth();
@@ -19,10 +20,11 @@ export function Settings() {
         <p className="text-sm text-muted-foreground">Signed in as</p>
         <p className="text-sm">{email ?? "…"}</p>
       </Card>
+      <MedicationsManager />
+
       <Card className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Goals, reminders, medication schedules, and notifications are added in later
-          phases.
+          Goals, reminders, and notifications are added in later phases.
         </p>
         <Button variant="outline" onClick={signOut}>
           Sign out

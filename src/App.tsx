@@ -5,6 +5,10 @@ import { Onboarding } from "@/pages/Onboarding";
 import { Dashboard } from "@/pages/Dashboard";
 import { Settings } from "@/pages/Settings";
 import { Placeholder } from "@/pages/Placeholder";
+import { Food } from "@/pages/log/Food";
+import { Workout } from "@/pages/log/Workout";
+import { Medicine } from "@/pages/log/Medicine";
+import { Steps } from "@/pages/log/Steps";
 
 export default function App() {
   return (
@@ -16,10 +20,10 @@ export default function App() {
         <Route element={<RouteGuard />}>
           <Route element={<AppLayout />}>
             <Route index element={<Dashboard />} />
-            <Route path="log/food" element={<Placeholder title="Food" phase="Phase 2" />} />
-            <Route path="log/workout" element={<Placeholder title="Workout" phase="Phase 2" />} />
-            <Route path="log/medicine" element={<Placeholder title="Medicine" phase="Phase 2" />} />
-            <Route path="log/steps" element={<Placeholder title="Steps" phase="Phase 2" />} />
+            <Route path="log/food" element={<Food />} />
+            <Route path="log/workout" element={<Workout />} />
+            <Route path="log/medicine" element={<Medicine />} />
+            <Route path="log/steps" element={<Steps />} />
             <Route path="log/water" element={<Placeholder title="Water" phase="Phase 5" />} />
             <Route path="log/wellbeing" element={<Placeholder title="Wellbeing" phase="Phase 5" />} />
             <Route path="checkin" element={<Placeholder title="Daily check-in" phase="Phase 4" />} />
