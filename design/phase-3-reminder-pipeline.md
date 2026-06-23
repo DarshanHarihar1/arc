@@ -71,3 +71,22 @@ Spec references: §3.4B (reminder flow), §4.5 (reminder pipeline detail), §4.1
    logic across timezones.
 4. Subscription lifecycle → verify: a simulated 410 response removes the stored
    subscription.
+
+## Milestones
+- **M1 — Secrets & subscribe:** VAPID keypair generated; secrets set; `push-subscribe` deployed.
+- **M2 — Client subscription:** permission + `pushManager.subscribe` stores a row in `push_subscriptions`.
+- **M3 — SW handlers:** `push` shows a notification; `notificationclick` deep-links.
+- **M4 — Dispatcher:** `reminder-dispatch` deployed; a manual invoke sends a push.
+- **M5 — Scheduled:** `pg_cron` (1/min) drives the dispatcher; automatic push on a real device.
+- **M6 — Reminders UI:** create/edit reminders in settings.
+
+## Testing Criteria (gate before Phase 4)
+| # | Test | How | Pass |
+|---|---|---|---|
+| 1 | End-to-end push | reminder ~1 min out, installed iOS PWA | notification arrives on the device |
+| 2 | Deep link | tap the notification | app opens at the configured screen |
+| 3 | Idempotency | invoke `reminder-dispatch` twice for one minute | one `reminder_dispatch_log` row, one push |
+| 4 | Windows | reminder outside `days_of_week` / grace window | does not fire |
+| 5 | TZ correctness | unit tests for fire-instant/grace/weekday across TZs | pass |
+| 6 | Sub cleanup | simulate a 410 from push | subscription row removed |
+| 7 | Med dose | medication reminder fires | a `pending` dose exists for one-tap action |

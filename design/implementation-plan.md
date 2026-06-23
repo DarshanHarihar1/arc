@@ -44,6 +44,19 @@ Every phase is considered complete only when:
 - Tests covering the phase's verifiable goals pass.
 - Changes are committed and a PR is raised for review.
 
+## Phase Gate Workflow
+
+Each phase file carries a **Milestones** list (ordered build checkpoints) and a
+**Testing Criteria** table (the concrete tests that gate the phase). The rule:
+
+> A phase is not done until every row in its Testing Criteria passes. We run that
+> gate, confirm it green, **then** start the next phase.
+
+Phases 1 and 2 were built before the backend was provisioned, so their live tests
+(sync, RLS, installability) are run against the real Supabase project as soon as it
+exists — see [`supabase/SETUP.md`](../supabase/SETUP.md) — before Phase 3 begins.
+
+
 ## Cross-Cutting Conventions
 
 These apply to all phases and are not repeated in each file:

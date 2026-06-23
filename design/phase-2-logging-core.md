@@ -54,3 +54,22 @@ workouts, medications, steps), §4.7.2–4.7.4 (state, Dexie, sync engine).
    unique key.
 4. Optimistic UX → verify: UI reflects a new log within one frame, before any network
    call resolves.
+
+## Milestones
+- **M1 — Store & engine:** Dexie schema, `outbox`, and `flushOutbox()` in place.
+- **M2 — Write path:** `useLog()` + `SyncProvider` triggers (online, foreground, 30s timer, post-login).
+- **M3 — Screens:** food, workout, medicine, steps loggers functional offline.
+- **M4 — Medications:** CRUD in settings; today's doses render and log.
+- **M5 — Live sync verified:** outbox flushes to Postgres against the real project.
+
+## Testing Criteria (gate before Phase 3)
+| # | Test | How | Pass |
+|---|---|---|---|
+| 1 | Offline write | airplane mode → log meal, workout, dose, steps | UI updates instantly; entries survive reload |
+| 2 | Optimistic UX | log an entry with network throttled | row appears before the network call resolves |
+| 3 | Sync up | reconnect → inspect Postgres | rows present with matching client UUIDs |
+| 4 | Idempotent flush | run flush twice (e.g. toggle online) | row counts unchanged — no duplicates |
+| 5 | Dose upsert | mark same dose Taken then Skipped | one `medication_logs` row, status updated |
+| 6 | Steps upsert | save steps twice for today | one `steps_log` row per `(user_id, day)` |
+| 7 | RLS | second account queries first account's logs | returns nothing |
+| 8 | Automated (optional) | `vitest` + `fake-indexeddb` on the sync engine | outbox idempotency + field-strip pass |

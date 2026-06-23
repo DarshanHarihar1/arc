@@ -65,3 +65,20 @@ Spec references: §3.1 (architecture), §3.3 (tech stack), §4.1 (data model), �
    only select its own rows.
 4. Installability → verify: manifest + service worker present; Lighthouse installable
    audit passes.
+
+## Milestones
+- **M1 — Backend live:** Supabase project created; migrations `0001`–`0004` applied; `get_advisors` reports no RLS-disabled tables.
+- **M2 — App builds & installs:** `npm run build` passes; Lighthouse "installable" audit passes; app opens standalone on an iPhone.
+- **M3 — Auth round-trip:** magic-link sign-in yields a session and exactly one `profiles` row.
+- **M4 — Isolation:** route guard redirects unauthenticated users; two test accounts cannot read each other's rows.
+
+## Testing Criteria (gate before Phase 2)
+| # | Test | How | Pass |
+|---|---|---|---|
+| 1 | Build & typecheck | `npm run build` | exits 0, SW + manifest emitted |
+| 2 | Schema present | `list_tables` | all spec tables exist |
+| 3 | RLS enabled | `get_advisors` (security) | no "RLS disabled" findings |
+| 4 | Profile on signup | sign in, query `profiles` | exactly one row for the user |
+| 5 | Cross-user isolation | sign in as A and B, attempt to read the other's rows via REST | each sees only their own |
+| 6 | Installable | Lighthouse PWA audit on the deployed URL | "installable" passes |
+| 7 | Standalone | Add to Home Screen on iOS, launch | opens full-screen, no Safari chrome |

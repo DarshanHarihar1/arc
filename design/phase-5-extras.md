@@ -65,3 +65,20 @@ photos), §4.1.2/4.1.3 (templates), §4.1.13 (weekly review), §4.4 (storage), �
 3. Template reuse → verify: using a template increments `use_count` and prefills fields.
 4. Score integration → verify: water/steps totals correctly flip their category to
    "complete" at the goal thresholds.
+
+## Milestones
+- **M1 — Water:** quick-add totals feed the score.
+- **M2 — Body metrics:** daily upsert + weight trend chart.
+- **M3 — Wellbeing:** mood/energy/sleep daily upsert.
+- **M4 — Photos:** compressed upload to private bucket; gallery via signed URLs; wires the deferred meal-photo upload.
+- **M5 — Templates:** save/reuse meal & workout templates; `use_count` ordering.
+- **M6 — Weekly review:** `weekly-review` function + `/review` screen.
+
+## Testing Criteria (gate before Phase 6)
+| # | Test | How | Pass |
+|---|---|---|---|
+| 1 | Water total | quick-add several amounts | daily total correct; score category flips at goal |
+| 2 | Metrics/wellbeing | save twice for a day | one row per `(user_id, day)`; trends render |
+| 3 | Photo privacy | request object without a signed URL | denied; signed URL works and expires |
+| 4 | Template reuse | use a template | fields prefilled; `use_count` increments |
+| 5 | Weekly aggregate | run `weekly-review` over a fixture week | one row; `avg_score` matches hand calc |
