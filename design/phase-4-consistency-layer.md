@@ -57,3 +57,18 @@ Spec references: §3.4C (dashboard/consistency flow), §4.1.12 (daily check-in),
    incomplete) produce expected current/best streaks.
 3. Check-in idempotency → verify: re-submitting the check-in updates the single daily row.
 4. Offline dashboard → verify: dashboard renders from Dexie with the network disabled.
+
+## Milestones
+- **M1 — Score:** scoring function with unit tests over fixtures.
+- **M2 — Streaks:** current/best/per-habit streak logic with unit tests.
+- **M3 — Check-in:** `/checkin` writes/updates one `daily_checkins` row, prefilled from logs.
+- **M4 — Dashboard:** score ring + streak counters, rendering from cache offline.
+
+## Testing Criteria (gate before Phase 5)
+| # | Test | How | Pass |
+|---|---|---|---|
+| 1 | Score correctness | unit tests on fixture days | match hand-computed scores |
+| 2 | Normalization | disable a category | denominator excludes it |
+| 3 | Streaks | synthetic histories (gaps, today incomplete) | current/best match expectations |
+| 4 | Check-in idempotency | submit check-in twice | single `daily_checkins` row updated |
+| 5 | Offline dashboard | network off | score ring + streaks render from Dexie |

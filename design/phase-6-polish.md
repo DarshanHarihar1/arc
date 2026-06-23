@@ -56,3 +56,18 @@ Spec references: §4.7.1 (`/onboarding`, `/settings`), §4.8 (PWA/iOS specifics)
 3. Subscription cleanup → verify: `cleanup-subscriptions` deletes a known-dead endpoint.
 4. Quality gates → verify: Lighthouse PWA audit passes; automated a11y check has no
    critical violations.
+
+## Milestones
+- **M1 — Onboarding:** standalone-gated notification setup; iOS 16.4+ guidance.
+- **M2 — Settings:** goals, weights, threshold, timezone, permission status.
+- **M3 — UX:** empty states everywhere; offline indicator; refined charts.
+- **M4 — Hardening:** `cleanup-subscriptions` cron; SW cache review; a11y + perf pass.
+
+## Testing Criteria (release gate)
+| # | Test | How | Pass |
+|---|---|---|---|
+| 1 | Onboarding gating | open in Safari tab vs installed | notify button hidden until standalone |
+| 2 | Settings → score | change a weight/threshold | computed score reflects it |
+| 3 | Empty states | fresh account | every screen shows a sensible empty state |
+| 4 | Sub cleanup | seed a dead endpoint, run cron | endpoint removed |
+| 5 | Quality | Lighthouse PWA audit + automated a11y | PWA passes; no critical a11y violations |
