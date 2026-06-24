@@ -68,9 +68,8 @@ export function Onboarding() {
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
-  // "confirm" after a sign-up that needs email verification; "reset" after a
-  // password-reset request. null = no confirmation screen showing.
-  const [sent, setSent] = useState<null | "confirm" | "reset">(null);
+  // Whether the "reset link sent" confirmation screen is showing.
+  const [sent, setSent] = useState(false);
 
   // Already signed in -> straight to the app.
   if (session) return <Navigate to="/" replace />;
@@ -89,18 +88,12 @@ export function Onboarding() {
     if (mode === "forgot") {
       const { error } = await resetPassword(email.trim());
       if (error) return fail(error);
-      setSent("reset");
+      setSent(true);
       return;
     }
-    if (mode === "signup") {
-      const { error, needsConfirmation } = await signUp(email.trim(), password);
-      if (error) return fail(error);
-      if (needsConfirmation) setSent("confirm");
-      // Otherwise a session is returned and the Navigate above takes over.
-      else setStatus("idle");
-      return;
-    }
-    const { error } = await signIn(email.trim(), password);
+    // Sign up and sign in both land a session, so the Navigate above takes over.
+    const { error } =
+      mode === "signup" ? await signUp(email.trim(), password) : await signIn(email.trim(), password);
     if (error) return fail(error);
     setStatus("idle");
   }
@@ -139,23 +132,14 @@ export function Onboarding() {
           </div>
           <h2 className="mt-4 text-[21px] font-bold tracking-tight">Check your inbox</h2>
           <p className="mt-2 text-[14.5px] leading-relaxed text-ink-soft">
-            {sent === "confirm" ? (
-              <>
-                Confirm your address at <span className="font-semibold text-ink">{email}</span> to
-                finish creating your account, then sign in.
-              </>
-            ) : (
-              <>
-                We sent a reset link to <span className="font-semibold text-ink">{email}</span>. Open
-                it on this device, then set a new password from Settings.
-              </>
-            )}
+            We sent a reset link to <span className="font-semibold text-ink">{email}</span>. Open it
+            on this device, then set a new password from Settings.
           </p>
           <button
             type="button"
             className="mt-5 text-[12.5px] text-ink-faint"
             onClick={() => {
-              setSent(null);
+              setSent(false);
               switchMode("signin");
             }}
           >

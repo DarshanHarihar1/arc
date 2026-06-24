@@ -12,10 +12,7 @@ interface AuthState {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (
-    email: string,
-    password: string,
-  ) => Promise<{ error: string | null; needsConfirmation: boolean }>;
+  signUp: (email: string, password: string) => Promise<{ error: string | null }>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
   updatePassword: (password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -44,13 +41,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signUp(email: string, password: string) {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: window.location.origin },
-    });
-    // No session back means the project requires email confirmation first.
-    return { error: error?.message ?? null, needsConfirmation: !error && !data.session };
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) return { error: error.message };
+    if (data.session) return { error: null };
+    // New users are auto-confirmed by a DB trigger, so when the project still
+    // withholds a session at sign-up we just sign in immediately — no email step.
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    return { error: signInError?.message ?? null };
   }
 
   async function resetPassword(email: string) {

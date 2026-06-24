@@ -77,14 +77,18 @@ export function Dashboard() {
   const completion: Record<Category, boolean> = {
     workout: (workoutToday ?? []).length > 0,
     meals: (foodToday ?? []).length > 0,
-    meds: doses.length === 0 ? true : dosesLeft === 0,
+    meds: doses.length > 0 && dosesLeft === 0,
     steps: !!stepsRow && stepsCount >= stepGoal,
     water: waterTotal >= waterGoal,
   };
 
+  // Medicine only counts toward consistency when doses are actually scheduled —
+  // otherwise a user with no medications would never reach 100%.
   const activeCats = (() => {
-    const cats = TILE_CATEGORIES.filter((c) => enabled.includes(c));
-    return cats.length ? cats : TILE_CATEGORIES;
+    let cats = TILE_CATEGORIES.filter((c) => enabled.includes(c));
+    if (!cats.length) cats = [...TILE_CATEGORIES];
+    if (doses.length === 0) cats = cats.filter((c) => c !== "meds");
+    return cats;
   })();
   const score = computeScore(completion, activeCats);
   const loggedCount = activeCats.filter((c) => completion[c]).length;
