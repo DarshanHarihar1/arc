@@ -70,6 +70,22 @@ export interface StepsLog {
   _dirty?: number;
 }
 
+export interface DailyCheckin {
+  id: string;
+  user_id: string;
+  day: string;
+  workout_done?: boolean | null;
+  meals_logged?: boolean | null;
+  meds_taken?: boolean | null;
+  steps_done?: boolean | null;
+  water_done?: boolean | null;
+  score?: number | null;
+  completed_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  _dirty?: number;
+}
+
 export type OutboxOp = "upsert" | "delete";
 
 export interface OutboxItem {
@@ -85,6 +101,7 @@ class AppDB extends Dexie {
   workout_exercises!: Table<WorkoutExercise, string>;
   medication_logs!: Table<MedicationLog, string>;
   steps_log!: Table<StepsLog, string>;
+  daily_checkins!: Table<DailyCheckin, string>;
   outbox!: Table<OutboxItem, number>;
 
   constructor() {
@@ -96,6 +113,10 @@ class AppDB extends Dexie {
       medication_logs: "id, scheduled_for, status, medication_id, _dirty",
       steps_log: "id, day, _dirty",
       outbox: "++seq",
+    });
+    // Phase 4 adds the consistency check-in store.
+    this.version(2).stores({
+      daily_checkins: "id, day, _dirty",
     });
   }
 }
