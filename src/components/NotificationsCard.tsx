@@ -51,10 +51,18 @@ export function NotificationsCard() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState(false);
-  const perm = permissionState();
+  const [perm, setPerm] = useState(permissionState);
 
+  // Re-read the live subscription + permission whenever the app regains focus, so
+  // the card reflects reality after the user grants (or returns from iOS settings).
   useEffect(() => {
-    void isSubscribed().then(setSubscribed);
+    const refresh = () => {
+      setPerm(permissionState());
+      void isSubscribed().then(setSubscribed);
+    };
+    refresh();
+    document.addEventListener("visibilitychange", refresh);
+    return () => document.removeEventListener("visibilitychange", refresh);
   }, []);
 
   async function onEnable() {
@@ -62,8 +70,11 @@ export function NotificationsCard() {
     setError(null);
     const { ok, error } = await enablePush();
     setBusy(false);
-    if (ok) setSubscribed(true);
-    else setError(error ?? "Couldn’t enable reminders.");
+    setPerm(permissionState());
+    // Trust the actual subscription state rather than just the call's result, so a
+    // device that ended up subscribed shows "on" even if a later step reported back.
+    setSubscribed(await isSubscribed());
+    if (!ok) setError(error ?? "Couldn’t enable reminders.");
   }
 
   if (perm === "unsupported") {
