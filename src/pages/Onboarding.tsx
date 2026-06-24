@@ -6,6 +6,14 @@ import { ArcMark, SectionLabel } from "@/components/ui/kit";
 import { useAuth } from "@/auth/AuthProvider";
 import { useIsStandalone } from "@/lib/usePwaDisplayMode";
 
+type Mode = "signin" | "signup" | "forgot";
+
+const COPY: Record<Mode, { overline: string; cta: string; busy: string }> = {
+  signin: { overline: "sign in", cta: "Sign in", busy: "Signing in…" },
+  signup: { overline: "create account", cta: "Create account", busy: "Creating…" },
+  forgot: { overline: "reset password", cta: "Send reset link", busy: "Sending…" },
+};
+
 function InstallSteps({ standalone }: { standalone: boolean }) {
   return (
     <div className="mt-8">
@@ -53,25 +61,53 @@ function Step({ n, children }: { n: number; children: React.ReactNode }) {
 }
 
 export function Onboarding() {
-  const { session, signInWithEmail } = useAuth();
+  const { session, signIn, signUp, resetPassword } = useAuth();
   const standalone = useIsStandalone();
+  const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState<"idle" | "sending" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  // "confirm" after a sign-up that needs email verification; "reset" after a
+  // password-reset request. null = no confirmation screen showing.
+  const [sent, setSent] = useState<null | "confirm" | "reset">(null);
 
   // Already signed in -> straight to the app.
   if (session) return <Navigate to="/" replace />;
 
+  function switchMode(next: Mode) {
+    setMode(next);
+    setError(null);
+    setStatus("idle");
+    setPassword("");
+  }
+
   async function submit() {
     setStatus("sending");
     setError(null);
-    const { error } = await signInWithEmail(email.trim());
-    if (error) {
-      setError(error);
-      setStatus("error");
-    } else {
-      setStatus("sent");
+
+    if (mode === "forgot") {
+      const { error } = await resetPassword(email.trim());
+      if (error) return fail(error);
+      setSent("reset");
+      return;
     }
+    if (mode === "signup") {
+      const { error, needsConfirmation } = await signUp(email.trim(), password);
+      if (error) return fail(error);
+      if (needsConfirmation) setSent("confirm");
+      // Otherwise a session is returned and the Navigate above takes over.
+      else setStatus("idle");
+      return;
+    }
+    const { error } = await signIn(email.trim(), password);
+    if (error) return fail(error);
+    setStatus("idle");
+  }
+
+  function fail(message: string) {
+    setError(message);
+    setStatus("error");
   }
 
   function onSubmit(e: React.FormEvent) {
@@ -79,19 +115,21 @@ export function Onboarding() {
     void submit();
   }
 
+  const copy = COPY[mode];
+
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-canvas px-6 pb-12 pt-16">
       <div className="mt-4 flex flex-col items-center gap-4 text-center">
         <ArcMark size={58} />
         <div className="text-[38px] font-bold leading-none tracking-[-0.05em]">arc</div>
-        {status !== "sent" && (
+        {!sent && (
           <p className="max-w-[268px] text-[15px] leading-relaxed text-ink-soft">
             Stay consistent with workouts, food, medicine, and steps.
           </p>
         )}
       </div>
 
-      {status === "sent" ? (
+      {sent ? (
         <div className="mt-9 flex flex-col items-center rounded-[20px] border border-line bg-white p-7 text-center shadow-card">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-tint text-primary">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
@@ -101,19 +139,27 @@ export function Onboarding() {
           </div>
           <h2 className="mt-4 text-[21px] font-bold tracking-tight">Check your inbox</h2>
           <p className="mt-2 text-[14.5px] leading-relaxed text-ink-soft">
-            We sent a magic link to{" "}
-            <span className="font-semibold text-ink">{email}</span>. Tap it on this device to finish
-            signing in.
+            {sent === "confirm" ? (
+              <>
+                Confirm your address at <span className="font-semibold text-ink">{email}</span> to
+                finish creating your account, then sign in.
+              </>
+            ) : (
+              <>
+                We sent a reset link to <span className="font-semibold text-ink">{email}</span>. Open
+                it on this device, then set a new password from Settings.
+              </>
+            )}
           </p>
-          <Button variant="outline" className="mt-5 w-full" onClick={() => void submit()}>
-            Resend link
-          </Button>
           <button
             type="button"
-            className="mt-3.5 text-[12.5px] text-ink-faint"
-            onClick={() => setStatus("idle")}
+            className="mt-5 text-[12.5px] text-ink-faint"
+            onClick={() => {
+              setSent(null);
+              switchMode("signin");
+            }}
           >
-            Wrong address? <span className="font-semibold text-primary">use a different email</span>
+            Back to <span className="font-semibold text-primary">sign in</span>
           </button>
         </div>
       ) : (
@@ -121,7 +167,8 @@ export function Onboarding() {
           onSubmit={onSubmit}
           className="mt-9 rounded-[20px] border border-line bg-white p-[22px] shadow-card"
         >
-          <SectionLabel>sign in</SectionLabel>
+          <SectionLabel>{copy.overline}</SectionLabel>
+
           <label className="mt-2 block text-[13px] text-ink-faint">Email</label>
           <input
             type="email"
@@ -133,20 +180,64 @@ export function Onboarding() {
             onChange={(e) => setEmail(e.target.value)}
             className="mt-1.5 h-[50px] w-full rounded-xl border border-input bg-white px-3.5 text-[15px] text-ink outline-none placeholder:text-ink-faint focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/30"
           />
+
+          {mode !== "forgot" && (
+            <>
+              <div className="mt-3.5 flex items-center justify-between">
+                <label className="block text-[13px] text-ink-faint">Password</label>
+                {mode === "signin" && (
+                  <button
+                    type="button"
+                    className="text-[12.5px] font-semibold text-primary"
+                    onClick={() => switchMode("forgot")}
+                  >
+                    Forgot?
+                  </button>
+                )}
+              </div>
+              <input
+                type="password"
+                required
+                minLength={8}
+                autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                placeholder={mode === "signup" ? "at least 8 characters" : "your password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="mt-1.5 h-[50px] w-full rounded-xl border border-input bg-white px-3.5 text-[15px] text-ink outline-none placeholder:text-ink-faint focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/30"
+              />
+            </>
+          )}
+
           <Button type="submit" className="mt-3.5 h-[52px] w-full" disabled={status === "sending"}>
             {status === "sending" ? (
               <>
                 <span className="inline-block h-[18px] w-[18px] animate-[arcspin_0.7s_linear_infinite] rounded-full border-[2.4px] border-white/40 border-t-white" />
-                Sending link…
+                {copy.busy}
               </>
             ) : (
-              "Email me a magic link"
+              copy.cta
             )}
           </Button>
+
           {error && <p className="mt-3 text-center text-sm text-danger">{error}</p>}
-          <p className="mt-3 text-center text-[12.5px] leading-relaxed text-ink-faint">
-            No password — we'll send a one-tap link.
-          </p>
+
+          <div className="mt-4 text-center text-[12.5px] text-ink-faint">
+            {mode === "signin" ? (
+              <>
+                New to arc?{" "}
+                <button type="button" className="font-semibold text-primary" onClick={() => switchMode("signup")}>
+                  Create an account
+                </button>
+              </>
+            ) : (
+              <>
+                Already have an account?{" "}
+                <button type="button" className="font-semibold text-primary" onClick={() => switchMode("signin")}>
+                  Sign in
+                </button>
+              </>
+            )}
+          </div>
         </form>
       )}
 

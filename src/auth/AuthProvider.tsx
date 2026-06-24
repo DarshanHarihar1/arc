@@ -11,7 +11,13 @@ import { supabase } from "@/lib/supabase";
 interface AuthState {
   session: Session | null;
   loading: boolean;
-  signInWithEmail: (email: string) => Promise<{ error: string | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signUp: (
+    email: string,
+    password: string,
+  ) => Promise<{ error: string | null; needsConfirmation: boolean }>;
+  resetPassword: (email: string) => Promise<{ error: string | null }>;
+  updatePassword: (password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -32,11 +38,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  async function signInWithEmail(email: string) {
-    const { error } = await supabase.auth.signInWithOtp({
+  async function signIn(email: string, password: string) {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error: error?.message ?? null };
+  }
+
+  async function signUp(email: string, password: string) {
+    const { data, error } = await supabase.auth.signUp({
       email,
+      password,
       options: { emailRedirectTo: window.location.origin },
     });
+    // No session back means the project requires email confirmation first.
+    return { error: error?.message ?? null, needsConfirmation: !error && !data.session };
+  }
+
+  async function resetPassword(email: string) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    });
+    return { error: error?.message ?? null };
+  }
+
+  async function updatePassword(password: string) {
+    const { error } = await supabase.auth.updateUser({ password });
     return { error: error?.message ?? null };
   }
 
@@ -45,7 +70,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, loading, signInWithEmail, signOut }}>
+    <AuthContext.Provider
+      value={{ session, loading, signIn, signUp, resetPassword, updatePassword, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   );

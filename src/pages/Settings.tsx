@@ -6,6 +6,7 @@ import { NotificationsCard } from "@/components/NotificationsCard";
 import { RemindersManager } from "@/components/RemindersManager";
 import { GoalsCard } from "@/components/GoalsCard";
 import { ScoreSettingsCard } from "@/components/ScoreSettingsCard";
+import { ChangePasswordCard } from "@/components/ChangePasswordCard";
 import { SectionLabel } from "@/components/ui/kit";
 
 const MORE_LINKS = [
@@ -34,7 +35,11 @@ export function Settings() {
           <p className="text-xs text-ink-faint">Signed in as</p>
           <p className="mt-px truncate text-[15px] font-semibold">{email}</p>
         </div>
-        <span className="flex-none rounded-full bg-surface-soft px-2.5 py-1 text-[11px] text-ink-soft">magic link</span>
+        <span className="flex-none rounded-full bg-surface-soft px-2.5 py-1 text-[11px] text-ink-soft">password</span>
+      </div>
+
+      <div className="mt-3">
+        <ChangePasswordCard />
       </div>
 
       <SectionLabel className="mb-3 mt-6">medications</SectionLabel>
