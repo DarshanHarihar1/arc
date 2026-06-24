@@ -42,7 +42,15 @@ export async function enablePush(): Promise<{ ok: boolean; error?: string }> {
   // pushManager.subscribe is refused, the network is down). Catch it so the UI
   // always gets a result back instead of being left stuck after the prompt.
   try {
-    const reg = await navigator.serviceWorker.ready;
+    // `serviceWorker.ready` never rejects — it just hangs if no SW ever activates
+    // (e.g. registration silently failed). Race it with a timeout so "Turning on…"
+    // can't get stuck forever, and the user sees a real error instead.
+    const reg = await withTimeout(
+      navigator.serviceWorker.ready,
+      10_000,
+      "The service worker didn’t start — reload the app and try again.",
+    );
+
     let sub = await reg.pushManager.getSubscription();
     if (!sub) {
       sub = await reg.pushManager.subscribe({
@@ -81,6 +89,16 @@ export async function enablePush(): Promise<{ ok: boolean; error?: string }> {
       error: err instanceof Error ? err.message : "Couldn’t enable reminders.",
     };
   }
+}
+
+// Reject after `ms` so an await that would otherwise hang resolves into an error.
+function withTimeout<T>(p: Promise<T>, ms: number, message: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(message)), ms),
+    ),
+  ]);
 }
 
 // VAPID public key (URL-safe base64) -> ArrayBuffer for applicationServerKey.
