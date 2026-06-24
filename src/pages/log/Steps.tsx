@@ -11,6 +11,7 @@ export function Steps() {
   const { upsert } = useLog();
   const day = todayStr();
   const [value, setValue] = useState("");
+  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   const { data: profile } = useProfile();
   const goal = profile?.step_goal ?? 8000;
@@ -28,12 +29,19 @@ export function Steps() {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!Number.isFinite(steps) || steps < 0) return;
-    await upsert("steps_log", {
-      id: todayRow?.id ?? newId(),
-      day,
-      steps,
-      created_at: todayRow?.created_at ?? new Date().toISOString(),
-    });
+    setStatus("saving");
+    try {
+      await upsert("steps_log", {
+        id: todayRow?.id ?? newId(),
+        day,
+        steps,
+        created_at: todayRow?.created_at ?? new Date().toISOString(),
+      });
+      setStatus("saved");
+      setTimeout(() => setStatus("idle"), 2000);
+    } catch {
+      setStatus("error");
+    }
   }
 
   return (
@@ -66,11 +74,23 @@ export function Steps() {
           </div>
         </div>
 
-        <Button type="submit" className="mt-[18px] h-[52px] w-full">
-          {todayRow ? "Update steps" : "Save steps"}
+        <Button
+          type="submit"
+          disabled={status === "saving"}
+          className="mt-[18px] h-[52px] w-full"
+        >
+          {status === "saving"
+            ? "Saving…"
+            : status === "saved"
+              ? "Saved ✓"
+              : todayRow
+                ? "Update steps"
+                : "Save steps"}
         </Button>
         <p className="mt-3 text-center text-[12.5px] leading-relaxed text-ink-faint">
-          One entry per day — this updates today's total.
+          {status === "error"
+            ? "Couldn't save — check your connection and try again."
+            : "One entry per day — this updates today's total."}
         </p>
       </form>
     </div>
