@@ -4,6 +4,7 @@ import { db, type DailyCheckin } from "@/db/db";
 import { todayStr } from "@/lib/day";
 import { isGreen } from "@/lib/score";
 import { currentStreak, bestStreak, type DayResult } from "@/lib/streak";
+import { useProfile } from "@/data/profile";
 import { ScoreRing } from "@/components/ScoreRing";
 import { Card } from "@/components/ui/card";
 
@@ -24,15 +25,15 @@ function toResults(rows: DailyCheckin[], pick: (r: DailyCheckin) => boolean): Da
 
 export function Dashboard() {
   const day = todayStr();
-  // Reads come straight from Dexie, so the dashboard renders offline; TanStack
-  // Query revalidation against Postgres happens through the normal sync path.
-  const checkins = useLiveQuery(() => db.daily_checkins.toArray(), []);
+  const { data: profile } = useProfile();
+  const greenThreshold = profile?.green_threshold ?? 80;
 
+  const checkins = useLiveQuery(() => db.daily_checkins.toArray(), []);
   const rows = checkins ?? [];
   const today = rows.find((r) => r.day === day);
   const score = today?.score ?? 0;
 
-  const consistency = toResults(rows, (r) => isGreen(r.score ?? 0));
+  const consistency = toResults(rows, (r) => isGreen(r.score ?? 0, greenThreshold));
   const workouts = toResults(rows, (r) => !!r.workout_done);
 
   const current = currentStreak(consistency, day);
@@ -45,7 +46,11 @@ export function Dashboard() {
         <div>
           <h1 className="text-xl font-semibold">Today</h1>
           <p className="text-sm text-muted-foreground">
-            {today ? (isGreen(score) ? "Green day 🎉" : "Keep going") : "Not checked in yet"}
+            {today
+              ? isGreen(score, greenThreshold)
+                ? "Green day"
+                : "Keep going"
+              : "Not checked in yet"}
           </p>
         </div>
         <Link to="/checkin" className="text-sm font-medium text-primary">

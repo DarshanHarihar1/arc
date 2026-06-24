@@ -4,12 +4,10 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/db/db";
 import { useLog, newId } from "@/sync/useLog";
 import { todayStr } from "@/lib/day";
-import { computeScore, isGreen } from "@/lib/score";
+import { computeScore, isGreen, DEFAULT_CATEGORIES, type Category } from "@/lib/score";
+import { useProfile } from "@/data/profile";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-
-const DEFAULT_STEP_GOAL = 8000;
-const DEFAULT_WATER_GOAL_ML = 3000;
 
 type AnswerKey = "workout" | "meals" | "meds" | "steps" | "water";
 
@@ -28,6 +26,12 @@ export function Checkin() {
   const navigate = useNavigate();
   const day = todayStr();
 
+  const { data: profile } = useProfile();
+  const stepGoal = profile?.step_goal ?? 8000;
+  const waterGoal = profile?.water_goal_ml ?? 3000;
+  const enabledCategories: Category[] = profile?.enabled_categories ?? DEFAULT_CATEGORIES;
+  const greenThreshold = profile?.green_threshold ?? 80;
+
   const checkinRows = useLiveQuery(() => db.daily_checkins.where("day").equals(day).toArray(), [day]);
   const workoutRows = useLiveQuery(() => db.workout_logs.where("workout_day").equals(day).toArray(), [day]);
   const foodRows = useLiveQuery(() => db.food_logs.toArray(), []);
@@ -38,21 +42,13 @@ export function Checkin() {
   const existing = checkinRows?.[0];
 
   const [answers, setAnswers] = useState<Answers>({
-    workout: false,
-    meals: false,
-    meds: false,
-    steps: false,
-    water: false,
+    workout: false, meals: false, meds: false, steps: false, water: false,
   });
   const prefilled = useRef(false);
 
   const loaded =
-    checkinRows !== undefined &&
-    workoutRows !== undefined &&
-    foodRows !== undefined &&
-    medRows !== undefined &&
-    stepsRows !== undefined &&
-    waterRows !== undefined;
+    checkinRows !== undefined && workoutRows !== undefined && foodRows !== undefined &&
+    medRows !== undefined && stepsRows !== undefined && waterRows !== undefined;
 
   useEffect(() => {
     if (!loaded || prefilled.current) return;
@@ -77,12 +73,12 @@ export function Checkin() {
       workout: (workoutRows ?? []).length > 0,
       meals: mealsToday,
       meds: dosesToday.length > 0 && dosesToday.every((m) => m.status === "taken"),
-      steps: !!steps && steps.steps >= DEFAULT_STEP_GOAL,
-      water: waterTotal >= DEFAULT_WATER_GOAL_ML,
+      steps: !!steps && steps.steps >= stepGoal,
+      water: waterTotal >= waterGoal,
     });
   }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const score = computeScore(answers);
+  const score = computeScore(answers, enabledCategories);
 
   async function submit() {
     await upsert("daily_checkins", {
@@ -100,6 +96,9 @@ export function Checkin() {
     navigate("/");
   }
 
+  // Only show questions for categories that are enabled.
+  const visibleQuestions = QUESTIONS.filter((q) => enabledCategories.includes(q.key));
+
   return (
     <div className="space-y-4">
       <header>
@@ -107,7 +106,7 @@ export function Checkin() {
         <p className="text-sm text-muted-foreground">Close out today in a few taps.</p>
       </header>
 
-      {QUESTIONS.map((q) => (
+      {visibleQuestions.map((q) => (
         <Card key={q.key} className="flex items-center justify-between">
           <p className="text-sm font-medium">{q.label}</p>
           <div className="grid grid-cols-2 gap-2">
@@ -133,7 +132,7 @@ export function Checkin() {
         <div>
           <p className="text-sm font-medium">Today's score</p>
           <p className="text-xs text-muted-foreground">
-            {isGreen(score) ? "Green day" : "Below 80"}
+            {isGreen(score, greenThreshold) ? "Green day" : `Below ${greenThreshold}`}
           </p>
         </div>
         <span className="text-2xl font-semibold tabular-nums">{score}</span>

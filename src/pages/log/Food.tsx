@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, type MealType } from "@/db/db";
 import { useLog, newId } from "@/sync/useLog";
 import { startOfTodayISO } from "@/lib/day";
 import { useMealTemplates, useMealTemplateMutations } from "@/data/templates";
+import { compressImage } from "@/lib/photo";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/auth/AuthProvider";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
@@ -12,9 +15,12 @@ const MEALS: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
 
 export function Food() {
   const { upsert } = useLog();
+  const { session } = useAuth();
+  const photoRef = useRef<HTMLInputElement>(null);
   const [meal, setMeal] = useState<MealType>("breakfast");
   const [title, setTitle] = useState("");
   const [calories, setCalories] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
 
   const { data: templates } = useMealTemplates();
@@ -29,6 +35,22 @@ export function Food() {
     e.preventDefault();
     if (!title.trim()) return;
     const now = new Date().toISOString();
+
+    // Upload the photo if one was picked, but don't block the local write.
+    let photoPath: string | null = null;
+    if (photoFile && session?.user.id) {
+      try {
+        const compressed = await compressImage(photoFile);
+        const path = `${session.user.id}/${Date.now()}.jpg`;
+        const { error } = await supabase.storage
+          .from("meal-photos")
+          .upload(path, compressed, { contentType: "image/jpeg" });
+        if (!error) photoPath = path;
+      } catch {
+        // Non-fatal: log the meal without the photo.
+      }
+    }
+
     await upsert("food_logs", {
       id: newId(),
       logged_at: now,
@@ -36,9 +58,12 @@ export function Food() {
       meal,
       title: title.trim(),
       calories: calories ? Number(calories) : null,
+      photo_path: photoPath,
     });
     setTitle("");
     setCalories("");
+    setPhotoFile(null);
+    if (photoRef.current) photoRef.current.value = "";
   }
 
   async function saveAsTemplate() {
@@ -125,6 +150,18 @@ export function Food() {
               placeholder="—"
             />
           </Field>
+
+          <Field label="Photo (optional)">
+            <input
+              ref={photoRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
+              className="text-sm text-muted-foreground"
+            />
+          </Field>
+
           <div className="flex gap-2">
             <Button type="submit" className="flex-1">Add meal</Button>
             <Button type="button" variant="outline" onClick={saveAsTemplate} disabled={!title.trim()}>
@@ -145,9 +182,14 @@ export function Food() {
               <p className="text-sm font-medium">{f.title}</p>
               <p className="text-xs capitalize text-muted-foreground">{f.meal}</p>
             </div>
-            {f.calories != null && (
-              <span className="text-sm text-muted-foreground">{f.calories} kcal</span>
-            )}
+            <div className="flex items-center gap-2">
+              {f.photo_path && (
+                <span className="text-xs text-muted-foreground">📷</span>
+              )}
+              {f.calories != null && (
+                <span className="text-sm text-muted-foreground">{f.calories} kcal</span>
+              )}
+            </div>
           </Card>
         ))}
       </section>
