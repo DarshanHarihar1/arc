@@ -3,7 +3,7 @@
 // Also sends an optional "Your week is ready" push to each user's devices.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
-import { cors } from "../_shared/cors.ts";
+import { corsHeaders as cors } from "../_shared/cors.ts";
 
 const DEFAULT_TZ = "Asia/Kolkata";
 
