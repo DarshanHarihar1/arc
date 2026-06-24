@@ -70,6 +70,58 @@ export interface StepsLog {
   _dirty?: number;
 }
 
+export interface WaterLog {
+  id: string;
+  user_id: string;
+  logged_at: string;
+  day: string;
+  amount_ml: number;
+  created_at: string;
+  updated_at: string;
+  _dirty?: number;
+}
+
+export interface BodyMetrics {
+  id: string;
+  user_id: string;
+  day: string;
+  weight_kg?: number | null;
+  body_fat_pct?: number | null;
+  waist_cm?: number | null;
+  created_at: string;
+  updated_at: string;
+  _dirty?: number;
+}
+
+export interface WellbeingLog {
+  id: string;
+  user_id: string;
+  day: string;
+  mood?: number | null;
+  energy?: number | null;
+  sleep_hours?: number | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  _dirty?: number;
+}
+
+export interface DailyCheckin {
+  id: string;
+  user_id: string;
+  day: string;
+  workout_done?: boolean | null;
+  meals_logged?: boolean | null;
+  meds_taken?: boolean | null;
+  steps_done?: boolean | null;
+  water_done?: boolean | null;
+  score?: number | null;
+  completed_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  _dirty?: number;
+}
+
 export type OutboxOp = "upsert" | "delete";
 
 export interface OutboxItem {
@@ -85,6 +137,10 @@ class AppDB extends Dexie {
   workout_exercises!: Table<WorkoutExercise, string>;
   medication_logs!: Table<MedicationLog, string>;
   steps_log!: Table<StepsLog, string>;
+  water_log!: Table<WaterLog, string>;
+  body_metrics!: Table<BodyMetrics, string>;
+  wellbeing_log!: Table<WellbeingLog, string>;
+  daily_checkins!: Table<DailyCheckin, string>;
   outbox!: Table<OutboxItem, number>;
 
   constructor() {
@@ -96,6 +152,16 @@ class AppDB extends Dexie {
       medication_logs: "id, scheduled_for, status, medication_id, _dirty",
       steps_log: "id, day, _dirty",
       outbox: "++seq",
+    });
+    // Phase 4 adds the consistency check-in store.
+    this.version(2).stores({
+      daily_checkins: "id, day, _dirty",
+    });
+    // Phase 5 adds water, body metrics, and wellbeing stores.
+    this.version(3).stores({
+      water_log: "id, day, logged_at, _dirty",
+      body_metrics: "id, day, _dirty",
+      wellbeing_log: "id, day, _dirty",
     });
   }
 }

@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { Home, UtensilsCrossed, Dumbbell, CheckCircle2, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useOnline } from "@/lib/useOnline";
 
 const tabs = [
   { to: "/", label: "Home", icon: Home, end: true },
@@ -11,8 +12,16 @@ const tabs = [
 ];
 
 export function AppLayout() {
+  const online = useOnline();
+
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
+      {!online && (
+        <div className="sticky top-0 z-50 bg-muted px-4 py-2 text-center text-xs text-muted-foreground">
+          You're offline — logs are saved locally and will sync when you reconnect.
+        </div>
+      )}
+
       <main className="flex-1 px-4 pb-24 pt-6">
         <Outlet />
       </main>

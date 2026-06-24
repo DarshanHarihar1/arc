@@ -3,6 +3,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/db/db";
 import { useLog, newId } from "@/sync/useLog";
 import { todayStr } from "@/lib/day";
+import { useWorkoutTemplates, useWorkoutTemplateMutations } from "@/data/templates";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
@@ -23,12 +24,32 @@ export function Workout() {
   const [duration, setDuration] = useState("");
   const [notes, setNotes] = useState("");
   const [exercises, setExercises] = useState<ExerciseDraft[]>([emptyExercise()]);
+  const [showTemplates, setShowTemplates] = useState(false);
+
+  const { data: templates } = useWorkoutTemplates();
+  const { save: saveTemplate, use: useTemplate } = useWorkoutTemplateMutations();
 
   const today = useLiveQuery(() => db.workout_logs.where("workout_day").equals(day).toArray(), [day]);
   const todayExercises = useLiveQuery(() => db.workout_exercises.toArray(), []);
 
   function updateExercise(i: number, patch: Partial<ExerciseDraft>) {
     setExercises((xs) => xs.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
+  }
+
+  function applyTemplate(t: NonNullable<typeof templates>[number]) {
+    setType(t.type ?? "");
+    if (t.exercises && t.exercises.length > 0) {
+      setExercises(
+        t.exercises.map((e) => ({
+          name: e.name,
+          sets: e.sets ? String(e.sets) : "",
+          reps: e.reps ? String(e.reps) : "",
+          weight: e.weight_kg ? String(e.weight_kg) : "",
+        })),
+      );
+    }
+    useTemplate.mutate(t.id);
+    setShowTemplates(false);
   }
 
   async function save(e: React.FormEvent) {
@@ -65,9 +86,55 @@ export function Workout() {
     setExercises([emptyExercise()]);
   }
 
+  async function saveAsTemplate() {
+    const filled = exercises.filter((x) => x.name.trim());
+    await saveTemplate.mutateAsync({
+      id: newId(),
+      name: type.trim() || "Workout",
+      type: type.trim() || null,
+      exercises: filled.map((x) => ({
+        name: x.name.trim(),
+        sets: x.sets ? Number(x.sets) : undefined,
+        reps: x.reps ? Number(x.reps) : undefined,
+        weight_kg: x.weight ? Number(x.weight) : undefined,
+      })),
+    });
+  }
+
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Log a workout</h1>
+
+      {templates && templates.length > 0 && (
+        <div className="space-y-2">
+          <button
+            type="button"
+            className="text-sm text-primary"
+            onClick={() => setShowTemplates((v) => !v)}
+          >
+            {showTemplates ? "Hide templates" : `Use a template (${templates.length})`}
+          </button>
+          {showTemplates && (
+            <div className="space-y-2">
+              {templates.map((t) => (
+                <Card
+                  key={t.id}
+                  className="flex cursor-pointer items-center justify-between py-3"
+                  onClick={() => applyTemplate(t)}
+                >
+                  <div>
+                    <p className="text-sm font-medium">{t.name}</p>
+                    <p className="text-xs capitalize text-muted-foreground">
+                      {t.exercises?.length ?? 0} exercises
+                    </p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">used {t.use_count}×</span>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <Card>
         <form onSubmit={save} className="space-y-3">
@@ -96,7 +163,12 @@ export function Workout() {
           <Field label="Notes">
             <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="optional" />
           </Field>
-          <Button type="submit" className="w-full">Save workout</Button>
+          <div className="flex gap-2">
+            <Button type="submit" className="flex-1">Save workout</Button>
+            <Button type="button" variant="outline" onClick={saveAsTemplate}>
+              Save template
+            </Button>
+          </div>
         </form>
       </Card>
 
