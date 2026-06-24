@@ -12,6 +12,10 @@ const quickLinks = [
   { to: "/log/workout", label: "Workout" },
   { to: "/log/medicine", label: "Medicine" },
   { to: "/log/steps", label: "Steps" },
+  { to: "/log/water", label: "Water" },
+  { to: "/log/wellbeing", label: "Wellbeing" },
+  { to: "/progress", label: "Progress" },
+  { to: "/review", label: "Review" },
 ];
 
 function toResults(rows: DailyCheckin[], pick: (r: DailyCheckin) => boolean): DayResult[] {

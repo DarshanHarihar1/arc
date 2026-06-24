@@ -8,17 +8,17 @@ import { computeScore, isGreen } from "@/lib/score";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-// Personalised step goals land with profile settings (Phase 6); until then the
-// prefill uses the schema default.
 const DEFAULT_STEP_GOAL = 8000;
+const DEFAULT_WATER_GOAL_ML = 3000;
 
-type AnswerKey = "workout" | "meals" | "meds" | "steps";
+type AnswerKey = "workout" | "meals" | "meds" | "steps" | "water";
 
 const QUESTIONS: { key: AnswerKey; label: string }[] = [
   { key: "workout", label: "Workout done?" },
   { key: "meals", label: "Meals logged?" },
   { key: "meds", label: "Medicines taken?" },
   { key: "steps", label: "Steps done?" },
+  { key: "water", label: "Water goal hit?" },
 ];
 
 type Answers = Record<AnswerKey, boolean>;
@@ -28,13 +28,12 @@ export function Checkin() {
   const navigate = useNavigate();
   const day = todayStr();
 
-  // toArray (not first) so an empty result is [] — distinguishable from the
-  // undefined that useLiveQuery returns while still loading.
   const checkinRows = useLiveQuery(() => db.daily_checkins.where("day").equals(day).toArray(), [day]);
   const workoutRows = useLiveQuery(() => db.workout_logs.where("workout_day").equals(day).toArray(), [day]);
   const foodRows = useLiveQuery(() => db.food_logs.toArray(), []);
   const medRows = useLiveQuery(() => db.medication_logs.toArray(), []);
   const stepsRows = useLiveQuery(() => db.steps_log.where("day").equals(day).toArray(), [day]);
+  const waterRows = useLiveQuery(() => db.water_log.where("day").equals(day).toArray(), [day]);
 
   const existing = checkinRows?.[0];
 
@@ -43,6 +42,7 @@ export function Checkin() {
     meals: false,
     meds: false,
     steps: false,
+    water: false,
   });
   const prefilled = useRef(false);
 
@@ -51,10 +51,9 @@ export function Checkin() {
     workoutRows !== undefined &&
     foodRows !== undefined &&
     medRows !== undefined &&
-    stepsRows !== undefined;
+    stepsRows !== undefined &&
+    waterRows !== undefined;
 
-  // Prefill once: from an existing check-in if the day was already closed out,
-  // otherwise a best guess from today's logs. The user confirms or flips each.
   useEffect(() => {
     if (!loaded || prefilled.current) return;
     prefilled.current = true;
@@ -65,6 +64,7 @@ export function Checkin() {
         meals: !!existing.meals_logged,
         meds: !!existing.meds_taken,
         steps: !!existing.steps_done,
+        water: !!existing.water_done,
       });
       return;
     }
@@ -72,11 +72,13 @@ export function Checkin() {
     const mealsToday = (foodRows ?? []).some((f) => todayStr(new Date(f.logged_at)) === day);
     const dosesToday = (medRows ?? []).filter((m) => todayStr(new Date(m.scheduled_for)) === day);
     const steps = stepsRows?.[0];
+    const waterTotal = (waterRows ?? []).reduce((sum, w) => sum + w.amount_ml, 0);
     setAnswers({
       workout: (workoutRows ?? []).length > 0,
       meals: mealsToday,
       meds: dosesToday.length > 0 && dosesToday.every((m) => m.status === "taken"),
       steps: !!steps && steps.steps >= DEFAULT_STEP_GOAL,
+      water: waterTotal >= DEFAULT_WATER_GOAL_ML,
     });
   }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -90,6 +92,7 @@ export function Checkin() {
       meals_logged: answers.meals,
       meds_taken: answers.meds,
       steps_done: answers.steps,
+      water_done: answers.water,
       score,
       completed_at: new Date().toISOString(),
       created_at: existing?.created_at ?? new Date().toISOString(),
@@ -128,9 +131,9 @@ export function Checkin() {
 
       <Card className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium">Today’s score</p>
+          <p className="text-sm font-medium">Today's score</p>
           <p className="text-xs text-muted-foreground">
-            {isGreen(score) ? "Green day 🎉" : "Below 80"}
+            {isGreen(score) ? "Green day" : "Below 80"}
           </p>
         </div>
         <span className="text-2xl font-semibold tabular-nums">{score}</span>

@@ -4,12 +4,16 @@ import { RouteGuard } from "@/auth/RouteGuard";
 import { Onboarding } from "@/pages/Onboarding";
 import { Dashboard } from "@/pages/Dashboard";
 import { Checkin } from "@/pages/Checkin";
+import { Progress } from "@/pages/Progress";
+import { Photos } from "@/pages/Photos";
+import { Review } from "@/pages/Review";
 import { Settings } from "@/pages/Settings";
-import { Placeholder } from "@/pages/Placeholder";
 import { Food } from "@/pages/log/Food";
 import { Workout } from "@/pages/log/Workout";
 import { Medicine } from "@/pages/log/Medicine";
 import { Steps } from "@/pages/log/Steps";
+import { Water } from "@/pages/log/Water";
+import { Wellbeing } from "@/pages/log/Wellbeing";
 
 export default function App() {
   return (
@@ -25,12 +29,12 @@ export default function App() {
             <Route path="log/workout" element={<Workout />} />
             <Route path="log/medicine" element={<Medicine />} />
             <Route path="log/steps" element={<Steps />} />
-            <Route path="log/water" element={<Placeholder title="Water" phase="Phase 5" />} />
-            <Route path="log/wellbeing" element={<Placeholder title="Wellbeing" phase="Phase 5" />} />
+            <Route path="log/water" element={<Water />} />
+            <Route path="log/wellbeing" element={<Wellbeing />} />
             <Route path="checkin" element={<Checkin />} />
-            <Route path="progress" element={<Placeholder title="Progress" phase="Phase 5" />} />
-            <Route path="photos" element={<Placeholder title="Progress photos" phase="Phase 5" />} />
-            <Route path="review" element={<Placeholder title="Weekly review" phase="Phase 5" />} />
+            <Route path="progress" element={<Progress />} />
+            <Route path="photos" element={<Photos />} />
+            <Route path="review" element={<Review />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Route>

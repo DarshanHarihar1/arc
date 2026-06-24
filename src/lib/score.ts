@@ -11,9 +11,7 @@ export const CATEGORY_WEIGHTS: Record<Category, number> = {
   water: 10,
 };
 
-// Water logging ships in Phase 5, so until then water is a disabled category and
-// is left out of the denominator — see phase-4 doc "Out of Scope".
-export const DEFAULT_CATEGORIES: Category[] = ["workout", "meals", "meds", "steps"];
+export const DEFAULT_CATEGORIES: Category[] = ["workout", "meals", "meds", "steps", "water"];
 
 export const GREEN_THRESHOLD = 80;
 

@@ -3,6 +3,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db, type MealType } from "@/db/db";
 import { useLog, newId } from "@/sync/useLog";
 import { startOfTodayISO } from "@/lib/day";
+import { useMealTemplates, useMealTemplateMutations } from "@/data/templates";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
@@ -14,6 +15,10 @@ export function Food() {
   const [meal, setMeal] = useState<MealType>("breakfast");
   const [title, setTitle] = useState("");
   const [calories, setCalories] = useState("");
+  const [showTemplates, setShowTemplates] = useState(false);
+
+  const { data: templates } = useMealTemplates();
+  const { save: saveTemplate, use: useTemplate } = useMealTemplateMutations();
 
   const today = useLiveQuery(async () => {
     const rows = await db.food_logs.where("logged_at").aboveOrEqual(startOfTodayISO()).toArray();
@@ -36,9 +41,59 @@ export function Food() {
     setCalories("");
   }
 
+  async function saveAsTemplate() {
+    if (!title.trim()) return;
+    await saveTemplate.mutateAsync({
+      id: newId(),
+      meal,
+      title: title.trim(),
+      notes: null,
+      calories: calories ? Number(calories) : null,
+    });
+  }
+
+  function applyTemplate(t: NonNullable<typeof templates>[number]) {
+    setMeal(t.meal ?? "snack");
+    setTitle(t.title);
+    setCalories(t.calories ? String(t.calories) : "");
+    useTemplate.mutate(t.id);
+    setShowTemplates(false);
+  }
+
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Log a meal</h1>
+
+      {templates && templates.length > 0 && (
+        <div className="space-y-2">
+          <button
+            type="button"
+            className="text-sm text-primary"
+            onClick={() => setShowTemplates((v) => !v)}
+          >
+            {showTemplates ? "Hide templates" : `Use a template (${templates.length})`}
+          </button>
+          {showTemplates && (
+            <div className="space-y-2">
+              {templates.map((t) => (
+                <Card
+                  key={t.id}
+                  className="flex cursor-pointer items-center justify-between py-3"
+                  onClick={() => applyTemplate(t)}
+                >
+                  <div>
+                    <p className="text-sm font-medium">{t.title}</p>
+                    <p className="text-xs capitalize text-muted-foreground">{t.meal}</p>
+                  </div>
+                  {t.calories && (
+                    <span className="text-xs text-muted-foreground">{t.calories} kcal</span>
+                  )}
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <Card>
         <form onSubmit={add} className="space-y-3">
@@ -70,7 +125,12 @@ export function Food() {
               placeholder="—"
             />
           </Field>
-          <Button type="submit" className="w-full">Add meal</Button>
+          <div className="flex gap-2">
+            <Button type="submit" className="flex-1">Add meal</Button>
+            <Button type="button" variant="outline" onClick={saveAsTemplate} disabled={!title.trim()}>
+              Save template
+            </Button>
+          </div>
         </form>
       </Card>
 
