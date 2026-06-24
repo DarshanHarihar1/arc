@@ -53,8 +53,8 @@ async function syncMedicationReminders(
   const rows = med.schedule.map((dose) => ({
     user_id: userId,
     kind: "medication",
-    title: `Time for ${med.name}`,
-    body: med.dosage,
+    title: `${med.name} o'clock 💊`,
+    body: "Your daily dose is calling — tap when it's done.",
     time_of_day: dose.time,
     days_of_week: [0, 1, 2, 3, 4, 5, 6],
     deep_link: "/log/medicine",
