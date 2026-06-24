@@ -6,6 +6,7 @@ import { todayStr } from "@/lib/day";
 import { compressImage } from "@/lib/photo";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/ui/kit";
 
 interface PhotoRow {
   id: string;
@@ -105,8 +106,9 @@ export function Photos() {
 
   return (
     <div className="space-y-4">
+      <BackButton />
       <header className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Progress photos</h1>
+        <h1 className="text-[28px] font-bold tracking-[-0.03em]">Progress photos</h1>
         <Button
           size="sm"
           onClick={() => inputRef.current?.click()}
@@ -126,7 +128,7 @@ export function Photos() {
       />
 
       {error && (
-        <p className="text-sm text-destructive">{error}</p>
+        <p className="text-sm text-danger">{error}</p>
       )}
 
       {photos.length === 0 && !uploading && (

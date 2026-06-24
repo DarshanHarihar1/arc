@@ -45,7 +45,7 @@ export function GoalsCard() {
   return (
     <Card>
       <form onSubmit={save} className="space-y-3">
-        <p className="font-medium">Goals</p>
+        <p className="font-semibold">Goals</p>
         <Field label="Daily step goal">
           <Input
             type="number"
@@ -68,7 +68,7 @@ export function GoalsCard() {
           <select
             value={timezone}
             onChange={(e) => setTimezone(e.target.value)}
-            className="h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="h-12 w-full rounded-xl border border-input bg-white px-3.5 text-[15px] text-ink outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/30"
           >
             {TZ_OPTIONS.map((tz) => (
               <option key={tz} value={tz}>{tz}</option>

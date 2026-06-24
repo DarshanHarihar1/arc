@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
+import { Camera } from "lucide-react";
 import { db, type MealType } from "@/db/db";
 import { useLog, newId } from "@/sync/useLog";
 import { startOfTodayISO } from "@/lib/day";
@@ -7,9 +8,9 @@ import { useMealTemplates, useMealTemplateMutations } from "@/data/templates";
 import { compressImage } from "@/lib/photo";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/auth/AuthProvider";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input, Field } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
+import { LogHeader, SectionLabel, Segmented } from "@/components/ui/kit";
 
 const MEALS: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
 
@@ -86,113 +87,97 @@ export function Food() {
   }
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Log a meal</h1>
+    <div>
+      <LogHeader title="log a meal" />
 
       {templates && templates.length > 0 && (
-        <div className="space-y-2">
-          <button
-            type="button"
-            className="text-sm text-primary"
-            onClick={() => setShowTemplates((v) => !v)}
-          >
+        <div className="mb-4">
+          <button type="button" className="text-sm font-medium text-primary" onClick={() => setShowTemplates((v) => !v)}>
             {showTemplates ? "Hide templates" : `Use a template (${templates.length})`}
           </button>
           {showTemplates && (
-            <div className="space-y-2">
+            <div className="mt-2 space-y-2">
               {templates.map((t) => (
-                <Card
+                <button
                   key={t.id}
-                  className="flex cursor-pointer items-center justify-between py-3"
+                  type="button"
                   onClick={() => applyTemplate(t)}
+                  className="flex w-full items-center justify-between rounded-2xl border border-line bg-white p-3.5 text-left shadow-card"
                 >
                   <div>
-                    <p className="text-sm font-medium">{t.title}</p>
-                    <p className="text-xs capitalize text-muted-foreground">{t.meal}</p>
+                    <p className="text-sm font-semibold">{t.title}</p>
+                    <p className="text-xs capitalize text-ink-faint">{t.meal}</p>
                   </div>
-                  {t.calories && (
-                    <span className="text-xs text-muted-foreground">{t.calories} kcal</span>
-                  )}
-                </Card>
+                  {t.calories && <span className="font-mono text-xs text-ink-soft">{t.calories}</span>}
+                </button>
               ))}
             </div>
           )}
         </div>
       )}
 
-      <Card>
-        <form onSubmit={add} className="space-y-3">
-          <Field label="Meal">
-            <div className="grid grid-cols-4 gap-2">
-              {MEALS.map((m) => (
-                <Button
-                  key={m}
-                  type="button"
-                  size="sm"
-                  variant={m === meal ? "default" : "outline"}
-                  onClick={() => setMeal(m)}
-                  className="capitalize"
-                >
-                  {m}
-                </Button>
-              ))}
-            </div>
-          </Field>
-          <Field label="What did you eat?">
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Oats & eggs" />
-          </Field>
-          <Field label="Calories (optional)">
-            <Input
-              type="number"
-              inputMode="numeric"
-              value={calories}
-              onChange={(e) => setCalories(e.target.value)}
-              placeholder="—"
-            />
-          </Field>
+      <form onSubmit={add}>
+        <Segmented options={MEALS.map((m) => ({ value: m, label: m }))} value={meal} onChange={setMeal} />
 
-          <Field label="Photo (optional)">
-            <input
-              ref={photoRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
-              className="text-sm text-muted-foreground"
-            />
-          </Field>
+        <label className="mb-1.5 mt-[18px] block text-[13px] font-medium text-ink-soft">what did you eat?</label>
+        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. grilled chicken salad" />
 
-          <div className="flex gap-2">
-            <Button type="submit" className="flex-1">Add meal</Button>
-            <Button type="button" variant="outline" onClick={saveAsTemplate} disabled={!title.trim()}>
-              Save template
-            </Button>
-          </div>
-        </form>
-      </Card>
+        <label className="mb-1.5 mt-3.5 block text-[13px] font-medium text-ink-soft">
+          calories <span className="font-normal text-ink-faint">· optional</span>
+        </label>
+        <div className="relative">
+          <Input
+            type="number"
+            inputMode="numeric"
+            value={calories}
+            onChange={(e) => setCalories(e.target.value)}
+            placeholder="—"
+            className="pr-12 font-mono"
+          />
+          <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[13px] text-ink-faint">kcal</span>
+        </div>
 
-      <section className="space-y-2">
-        <h2 className="text-sm text-muted-foreground">Today</h2>
-        {today && today.length === 0 && (
-          <p className="text-sm text-muted-foreground">No meals logged yet.</p>
-        )}
-        {today?.map((f) => (
-          <Card key={f.id} className="flex items-center justify-between py-3">
-            <div>
-              <p className="text-sm font-medium">{f.title}</p>
-              <p className="text-xs capitalize text-muted-foreground">{f.meal}</p>
+        <label
+          className="mt-3.5 flex min-h-[60px] cursor-pointer items-center justify-center gap-2 rounded-[14px] border-[1.5px] border-dashed border-[#DDE2E7] bg-[#FAFBFC] text-ink-faint"
+        >
+          <Camera className="h-5 w-5" strokeWidth={1.7} />
+          <span className="text-[13.5px]">{photoFile ? photoFile.name : "add photo"}</span>
+          <input
+            ref={photoRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
+            className="hidden"
+          />
+        </label>
+
+        <Button type="submit" className="mt-[18px] h-[52px] w-full">Add meal</Button>
+        <Button type="button" variant="ghost" className="mt-2 w-full" onClick={saveAsTemplate} disabled={!title.trim()}>
+          Save as template
+        </Button>
+      </form>
+
+      <SectionLabel className="mb-3 mt-7">today</SectionLabel>
+      {today && today.length === 0 ? (
+        <p className="text-sm text-ink-faint">No meals logged yet.</p>
+      ) : (
+        <div className="rounded-[18px] border border-line bg-white px-4 shadow-card">
+          {today?.map((f, i) => (
+            <div
+              key={f.id}
+              className={"flex items-center gap-3 py-3.5" + (i < (today.length - 1) ? " border-b border-line-soft" : "")}
+            >
+              <span className="rounded-md bg-surface-soft px-2 py-0.5 text-[11px] font-semibold capitalize text-ink-soft">
+                {f.meal}
+              </span>
+              <span className="flex-1 text-sm font-medium">{f.title}</span>
+              {f.photo_path && <span className="text-xs text-ink-faint">📷</span>}
+              {f.calories != null && <span className="font-mono text-[13px] text-ink-soft">{f.calories}</span>}
             </div>
-            <div className="flex items-center gap-2">
-              {f.photo_path && (
-                <span className="text-xs text-muted-foreground">📷</span>
-              )}
-              {f.calories != null && (
-                <span className="text-sm text-muted-foreground">{f.calories} kcal</span>
-              )}
-            </div>
-          </Card>
-        ))}
-      </section>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

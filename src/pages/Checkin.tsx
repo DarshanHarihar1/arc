@@ -1,25 +1,35 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
+import { format } from "date-fns";
+import { Check } from "lucide-react";
 import { db } from "@/db/db";
 import { useLog, newId } from "@/sync/useLog";
 import { todayStr, prevDay } from "@/lib/day";
-import { computeScore, isGreen, DEFAULT_CATEGORIES, type Category } from "@/lib/score";
-import { useProfile } from "@/data/profile";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SectionLabel, Segmented } from "@/components/ui/kit";
 
-type AnswerKey = "workout" | "meals" | "meds" | "steps" | "water";
+const MOODS = [
+  { value: 1, label: "rough", color: "#EEF0F2" },
+  { value: 2, label: "low", color: "#DEEAE3" },
+  { value: 3, label: "okay", color: "#C4E0D0" },
+  { value: 4, label: "good", color: "#2E9E6B" },
+  { value: 5, label: "great", color: "#1C7A50" },
+] as const;
 
-const QUESTIONS: { key: AnswerKey; label: string }[] = [
-  { key: "workout", label: "Workout done?" },
-  { key: "meals", label: "Meals logged?" },
-  { key: "meds", label: "Medicines taken?" },
-  { key: "steps", label: "Steps done?" },
-  { key: "water", label: "Water goal hit?" },
+type Energy = "low" | "steady" | "high";
+const ENERGY_OPTIONS: { value: Energy; label: string }[] = [
+  { value: "low", label: "low" },
+  { value: "steady", label: "steady" },
+  { value: "high", label: "high" },
 ];
 
-type Answers = Record<AnswerKey, boolean>;
+// Energy lives on the shared 1–5 scale (see log/Wellbeing) so both screens agree.
+const energyToScore: Record<Energy, number> = { low: 2, steady: 3, high: 4 };
+function scoreToEnergy(n: number | null | undefined): Energy {
+  if (n == null) return "steady";
+  return n < 3 ? "low" : n > 3 ? "high" : "steady";
+}
 
 export function Checkin() {
   const { upsert } = useLog();
@@ -27,132 +37,98 @@ export function Checkin() {
   const day = todayStr();
   const yesterday = prevDay(day);
 
-  const { data: profile } = useProfile();
-  const stepGoal = profile?.step_goal ?? 8000;
-  const waterGoal = profile?.water_goal_ml ?? 3000;
-  const enabledCategories: Category[] = profile?.enabled_categories ?? DEFAULT_CATEGORIES;
-  const greenThreshold = profile?.green_threshold ?? 80;
+  const [mood, setMood] = useState(4);
+  const [energy, setEnergy] = useState<Energy>("steady");
+  const [note, setNote] = useState("");
+  const prefilled = useRef(false);
 
-  const checkinRows = useLiveQuery(() => db.daily_checkins.where("day").equals(day).toArray(), [day]);
-  const workoutRows = useLiveQuery(() => db.workout_logs.where("workout_day").equals(day).toArray(), [day]);
-  const foodRows = useLiveQuery(() => db.food_logs.toArray(), []);
-  const medRows = useLiveQuery(() => db.medication_logs.toArray(), []);
-  const stepsRows = useLiveQuery(() => db.steps_log.where("day").equals(day).toArray(), [day]);
-  const waterRows = useLiveQuery(() => db.water_log.where("day").equals(day).toArray(), [day]);
-  // Yesterday's steps — used as a hint so the user knows their recent baseline.
-  const yesterdaySteps = useLiveQuery(
-    () => db.steps_log.where("day").equals(yesterday).first(),
+  const rows = useLiveQuery(() => db.wellbeing_log.where("day").equals(day).toArray(), [day]);
+  const existing = rows?.[0];
+  const yesterdayRow = useLiveQuery(
+    () => db.wellbeing_log.where("day").equals(yesterday).first(),
     [yesterday],
   );
 
-  const existing = checkinRows?.[0];
-
-  const [answers, setAnswers] = useState<Answers>({
-    workout: false, meals: false, meds: false, steps: false, water: false,
-  });
-  const prefilled = useRef(false);
-
-  const loaded =
-    checkinRows !== undefined && workoutRows !== undefined && foodRows !== undefined &&
-    medRows !== undefined && stepsRows !== undefined && waterRows !== undefined;
-
   useEffect(() => {
-    if (!loaded || prefilled.current) return;
+    if (!existing || prefilled.current) return;
     prefilled.current = true;
-
-    if (existing) {
-      setAnswers({
-        workout: !!existing.workout_done,
-        meals: !!existing.meals_logged,
-        meds: !!existing.meds_taken,
-        steps: !!existing.steps_done,
-        water: !!existing.water_done,
-      });
-      return;
-    }
-
-    const mealsToday = (foodRows ?? []).some((f) => todayStr(new Date(f.logged_at)) === day);
-    const dosesToday = (medRows ?? []).filter((m) => todayStr(new Date(m.scheduled_for)) === day);
-    const steps = stepsRows?.[0];
-    const waterTotal = (waterRows ?? []).reduce((sum, w) => sum + w.amount_ml, 0);
-    setAnswers({
-      workout: (workoutRows ?? []).length > 0,
-      meals: mealsToday,
-      meds: dosesToday.length > 0 && dosesToday.every((m) => m.status === "taken"),
-      steps: !!steps && steps.steps >= stepGoal,
-      water: waterTotal >= waterGoal,
-    });
-  }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const score = computeScore(answers, enabledCategories);
-  const visibleQuestions = QUESTIONS.filter((q) => enabledCategories.includes(q.key));
+    if (existing.mood) setMood(existing.mood);
+    setEnergy(scoreToEnergy(existing.energy));
+    if (existing.notes) setNote(existing.notes);
+  }, [existing?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function submit() {
-    await upsert("daily_checkins", {
+    const now = new Date().toISOString();
+    await upsert("wellbeing_log", {
       id: existing?.id ?? newId(),
       day,
-      workout_done: answers.workout,
-      meals_logged: answers.meals,
-      meds_taken: answers.meds,
-      steps_done: answers.steps,
-      water_done: answers.water,
-      score,
-      completed_at: new Date().toISOString(),
-      created_at: existing?.created_at ?? new Date().toISOString(),
+      mood,
+      energy: energyToScore[energy],
+      sleep_hours: existing?.sleep_hours ?? null,
+      notes: note.trim() || null,
+      created_at: existing?.created_at ?? now,
     });
     navigate("/");
   }
 
+  const dateLabel = format(new Date(), "EEEE, MMMM d").toLowerCase();
+
   return (
-    <div className="space-y-4">
-      <header>
-        <h1 className="text-xl font-semibold">Evening check-in</h1>
-        <p className="text-sm text-muted-foreground">Close out today in a few taps.</p>
-      </header>
+    <div>
+      <h1 className="text-[30px] font-bold leading-none tracking-[-0.035em]">check-in</h1>
+      <p className="mt-[7px] text-sm text-ink-soft">{dateLabel} · a quiet minute for you</p>
 
-      {visibleQuestions.map((q) => (
-        <Card key={q.key} className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium">{q.label}</p>
-            {/* Yesterday's step count shown as a baseline hint (spec §4.1.12 risk mitigation) */}
-            {q.key === "steps" && yesterdaySteps && (
-              <p className="text-xs text-muted-foreground">
-                Yesterday: {yesterdaySteps.steps.toLocaleString()} steps
-              </p>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              size="sm"
-              variant={answers[q.key] ? "default" : "outline"}
-              onClick={() => setAnswers((a) => ({ ...a, [q.key]: true }))}
+      <SectionLabel className="mb-3.5 mt-6">how are you feeling?</SectionLabel>
+      <div className="flex justify-between">
+        {MOODS.map((m) => {
+          const active = m.value === mood;
+          const isGreen = m.value >= 4;
+          return (
+            <button
+              key={m.value}
+              type="button"
+              onClick={() => setMood(m.value)}
+              className="flex flex-col items-center gap-2.5"
             >
-              Yes
-            </Button>
-            <Button
-              size="sm"
-              variant={!answers[q.key] ? "default" : "outline"}
-              onClick={() => setAnswers((a) => ({ ...a, [q.key]: false }))}
-            >
-              No
-            </Button>
-          </div>
-        </Card>
-      ))}
+              <span
+                className="flex h-[46px] w-[46px] items-center justify-center rounded-full text-white transition-shadow"
+                style={{
+                  background: m.color,
+                  boxShadow: active ? "0 0 0 3px #fff, 0 0 0 5.5px #2E9E6B" : undefined,
+                }}
+              >
+                {active && isGreen && <Check className="h-[18px] w-[18px]" strokeWidth={2.4} />}
+              </span>
+              <span className={active ? "text-[11.5px] font-semibold text-green-deep" : "text-[11.5px] text-ink-faint"}>
+                {m.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
-      <Card className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium">Today's score</p>
-          <p className="text-xs text-muted-foreground">
-            {isGreen(score, greenThreshold) ? "Green day" : `Below ${greenThreshold}`}
-          </p>
-        </div>
-        <span className="text-2xl font-semibold tabular-nums">{score}</span>
-      </Card>
+      <SectionLabel className="mb-3 mt-7">energy</SectionLabel>
+      <Segmented options={ENERGY_OPTIONS} value={energy} onChange={setEnergy} />
 
-      <Button className="w-full" onClick={submit}>
+      <SectionLabel className="mb-3 mt-7">anything on your mind?</SectionLabel>
+      <textarea
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="A line or two about your day…"
+        className="min-h-24 w-full rounded-[14px] border border-input bg-white p-3.5 text-[14.5px] leading-relaxed text-[#3A434F] outline-none placeholder:text-ink-faint focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/30"
+      />
+
+      <Button className="mt-5 h-[52px] w-full" onClick={() => void submit()}>
         {existing ? "Update check-in" : "Save check-in"}
       </Button>
+
+      {yesterdayRow && (
+        <div className="mt-4 flex items-center justify-center gap-2 text-[12.5px] text-ink-faint">
+          yesterday
+          <span className="inline-block h-[9px] w-[9px] rounded-full bg-primary" />
+          {MOODS.find((m) => m.value === yesterdayRow.mood)?.label ?? "logged"} · {scoreToEnergy(yesterdayRow.energy)}
+        </div>
+      )}
     </div>
   );
 }

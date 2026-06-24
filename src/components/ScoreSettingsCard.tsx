@@ -51,7 +51,7 @@ export function ScoreSettingsCard() {
   return (
     <Card>
       <form onSubmit={save} className="space-y-4">
-        <p className="font-medium">Consistency score</p>
+        <p className="font-semibold">Consistency score</p>
 
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">Count toward score</p>

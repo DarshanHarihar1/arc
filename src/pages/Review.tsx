@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Card } from "@/components/ui/card";
+import { LogHeader } from "@/components/ui/kit";
 
 interface WeeklyReview {
   id: string;
@@ -32,7 +33,7 @@ export function Review() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Weekly review</h1>
+      <LogHeader title="Weekly review" />
 
       {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
 

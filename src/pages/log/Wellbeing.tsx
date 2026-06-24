@@ -6,6 +6,7 @@ import { todayStr } from "@/lib/day";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
+import { LogHeader } from "@/components/ui/kit";
 
 function RatingRow({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
   return (
@@ -66,7 +67,7 @@ export function Wellbeing() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Wellbeing</h1>
+      <LogHeader title="Wellbeing" subtitle="Sleep & a deeper daily log." />
 
       <Card>
         <form onSubmit={save} className="space-y-4">

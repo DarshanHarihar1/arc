@@ -5,6 +5,7 @@ import { todayStr } from "@/lib/day";
 import { useProfile } from "@/data/profile";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { LogHeader } from "@/components/ui/kit";
 
 const QUICK_AMOUNTS = [150, 250, 350, 500];
 
@@ -32,7 +33,7 @@ export function Water() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Water</h1>
+      <LogHeader title="Water" />
 
       <Card className="space-y-3">
         <div className="flex items-end justify-between">

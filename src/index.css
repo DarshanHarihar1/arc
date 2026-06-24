@@ -4,18 +4,19 @@
 
 @layer base {
   :root {
-    --background: 222 47% 7%;
-    --foreground: 210 40% 96%;
-    --card: 222 40% 11%;
-    --card-foreground: 210 40% 96%;
-    --primary: 152 65% 45%;
-    --primary-foreground: 222 47% 7%;
-    --muted: 222 30% 16%;
-    --muted-foreground: 215 20% 65%;
-    --border: 222 30% 18%;
-    --input: 222 30% 18%;
-    --ring: 152 65% 45%;
-    --radius: 0.75rem;
+    /* Calm light palette — see the arc design system. */
+    --background: 210 24% 96%; /* canvas #F4F6F8 */
+    --foreground: 213 23% 15%; /* ink #1E2630 */
+    --card: 0 0% 100%; /* surface #FFFFFF */
+    --card-foreground: 213 23% 15%;
+    --primary: 152 55% 40%; /* accent green #2E9E6B */
+    --primary-foreground: 0 0% 100%;
+    --muted: 210 13% 95%; /* chip / track #F0F2F4 */
+    --muted-foreground: 213 12% 41%; /* ink · secondary #5C6775 */
+    --border: 206 16% 92%; /* line #E8ECEF */
+    --input: 210 16% 90%; /* field border #E1E6EA */
+    --ring: 152 55% 40%;
+    --radius: 1rem;
   }
 
   * {
@@ -23,11 +24,29 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: "Geist", system-ui, -apple-system, sans-serif;
     -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
   /* Respect the iOS safe area when installed to the home screen. */
   body {
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@keyframes arcspin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes arcpulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
   }
 }

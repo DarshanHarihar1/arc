@@ -15,6 +15,7 @@ import { todayStr } from "@/lib/day";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
+import { LogHeader } from "@/components/ui/kit";
 
 export function Progress() {
   const { upsert } = useLog();
@@ -73,7 +74,7 @@ export function Progress() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Progress</h1>
+      <LogHeader title="Progress" />
 
       <Card>
         <form onSubmit={save} className="space-y-3">

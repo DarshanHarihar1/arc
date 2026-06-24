@@ -1,9 +1,56 @@
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
-import { Card } from "@/components/ui/card";
+import { Share } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ArcMark, SectionLabel } from "@/components/ui/kit";
 import { useAuth } from "@/auth/AuthProvider";
 import { useIsStandalone } from "@/lib/usePwaDisplayMode";
+
+function InstallSteps({ standalone }: { standalone: boolean }) {
+  return (
+    <div className="mt-8">
+      <SectionLabel className="mb-3">add to home screen</SectionLabel>
+      {standalone ? (
+        <div className="rounded-[18px] border border-line bg-white p-4 text-sm font-medium text-green-deep">
+          ✓ Installed — you're running the app.
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4 rounded-[18px] border border-line bg-white p-[18px]">
+          <Step n={1}>
+            <span className="inline-flex flex-wrap items-center gap-1.5">
+              tap the share button
+              <span className="inline-flex h-[22px] w-[22px] items-center justify-center rounded-md bg-tint text-primary">
+                <Share className="h-3.5 w-3.5" strokeWidth={1.8} />
+              </span>
+            </span>
+          </Step>
+          <div className="h-px bg-line-soft" />
+          <Step n={2}>
+            scroll and tap <span className="font-semibold text-ink">"add to home screen"</span>
+          </Step>
+          <div className="h-px bg-line-soft" />
+          <Step n={3}>
+            tap <span className="font-semibold text-ink">add</span> — arc lands on your home screen
+          </Step>
+        </div>
+      )}
+      <div className="mt-3 rounded-xl bg-tint px-3.5 py-2.5 text-[12.5px] leading-relaxed text-green-deep">
+        Installing is required for daily reminders to reach you on iOS (16.4+).
+      </div>
+    </div>
+  );
+}
+
+function Step({ n, children }: { n: number; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full bg-surface-soft font-mono text-[13px] font-semibold text-ink-soft">
+        {n}
+      </div>
+      <div className="text-sm leading-snug text-[#3A434F]">{children}</div>
+    </div>
+  );
+}
 
 export function Onboarding() {
   const { session, signInWithEmail } = useAuth();
@@ -15,8 +62,7 @@ export function Onboarding() {
   // Already signed in -> straight to the app.
   if (session) return <Navigate to="/" replace />;
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function submit() {
     setStatus("sending");
     setError(null);
     const { error } = await signInWithEmail(email.trim());
@@ -28,56 +74,83 @@ export function Onboarding() {
     }
   }
 
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    void submit();
+  }
+
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-5 px-5 py-10">
-      <div className="space-y-1 text-center">
-        <h1 className="text-2xl font-semibold">Arc</h1>
-        <p className="text-sm text-muted-foreground">
-          Stay consistent with workouts, food, medicine, and steps.
-        </p>
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-canvas px-6 pb-12 pt-16">
+      <div className="mt-4 flex flex-col items-center gap-4 text-center">
+        <ArcMark size={58} />
+        <div className="text-[38px] font-bold leading-none tracking-[-0.05em]">arc</div>
+        {status !== "sent" && (
+          <p className="max-w-[268px] text-[15px] leading-relaxed text-ink-soft">
+            Stay consistent with workouts, food, medicine, and steps.
+          </p>
+        )}
       </div>
 
-      <Card className="space-y-4">
-        <h2 className="font-medium">Sign in</h2>
-        {status === "sent" ? (
-          <p className="text-sm text-muted-foreground">
-            Check your email for a magic link. Open it on this device to finish signing in.
+      {status === "sent" ? (
+        <div className="mt-9 flex flex-col items-center rounded-[20px] border border-line bg-white p-7 text-center shadow-card">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-tint text-primary">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="5" width="18" height="14" rx="3" stroke="currentColor" strokeWidth="1.8" />
+              <path d="M4 7l8 6 8-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <h2 className="mt-4 text-[21px] font-bold tracking-tight">Check your inbox</h2>
+          <p className="mt-2 text-[14.5px] leading-relaxed text-ink-soft">
+            We sent a magic link to{" "}
+            <span className="font-semibold text-ink">{email}</span>. Tap it on this device to finish
+            signing in.
           </p>
-        ) : (
-          <form onSubmit={onSubmit} className="space-y-3">
-            <input
-              type="email"
-              required
-              inputMode="email"
-              autoComplete="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <Button type="submit" className="w-full" disabled={status === "sending"}>
-              {status === "sending" ? "Sending…" : "Email me a magic link"}
-            </Button>
-            {error && <p className="text-sm text-red-400">{error}</p>}
-          </form>
-        )}
-      </Card>
+          <Button variant="outline" className="mt-5 w-full" onClick={() => void submit()}>
+            Resend link
+          </Button>
+          <button
+            type="button"
+            className="mt-3.5 text-[12.5px] text-ink-faint"
+            onClick={() => setStatus("idle")}
+          >
+            Wrong address? <span className="font-semibold text-primary">use a different email</span>
+          </button>
+        </div>
+      ) : (
+        <form
+          onSubmit={onSubmit}
+          className="mt-9 rounded-[20px] border border-line bg-white p-[22px] shadow-card"
+        >
+          <SectionLabel>sign in</SectionLabel>
+          <label className="mt-2 block text-[13px] text-ink-faint">Email</label>
+          <input
+            type="email"
+            required
+            inputMode="email"
+            autoComplete="email"
+            placeholder="you@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="mt-1.5 h-[50px] w-full rounded-xl border border-input bg-white px-3.5 text-[15px] text-ink outline-none placeholder:text-ink-faint focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/30"
+          />
+          <Button type="submit" className="mt-3.5 h-[52px] w-full" disabled={status === "sending"}>
+            {status === "sending" ? (
+              <>
+                <span className="inline-block h-[18px] w-[18px] animate-[arcspin_0.7s_linear_infinite] rounded-full border-[2.4px] border-white/40 border-t-white" />
+                Sending link…
+              </>
+            ) : (
+              "Email me a magic link"
+            )}
+          </Button>
+          {error && <p className="mt-3 text-center text-sm text-danger">{error}</p>}
+          <p className="mt-3 text-center text-[12.5px] leading-relaxed text-ink-faint">
+            No password — we'll send a one-tap link.
+          </p>
+        </form>
+      )}
 
-      <Card className="space-y-2">
-        <h2 className="font-medium">Add to Home Screen</h2>
-        {standalone ? (
-          <p className="text-sm text-primary">✓ Installed — you’re running the app.</p>
-        ) : (
-          <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
-            <li>Open this page in Safari on your iPhone.</li>
-            <li>Tap the Share button, then “Add to Home Screen”.</li>
-            <li>Open Arc from the new home-screen icon.</li>
-          </ol>
-        )}
-        <p className="text-xs text-muted-foreground">
-          Installing is required for reminders to reach you on iOS (16.4+).
-        </p>
-      </Card>
+      <InstallSteps standalone={standalone} />
     </div>
   );
 }

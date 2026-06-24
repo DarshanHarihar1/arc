@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
+import { Plus, Dumbbell } from "lucide-react";
 import { db } from "@/db/db";
 import { useLog, newId } from "@/sync/useLog";
 import { todayStr } from "@/lib/day";
 import { useWorkoutTemplates, useWorkoutTemplateMutations } from "@/data/templates";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input, Field } from "@/components/ui/input";
+import { LogHeader, SectionLabel, Segmented } from "@/components/ui/kit";
 
 interface ExerciseDraft {
   name: string;
@@ -16,11 +16,12 @@ interface ExerciseDraft {
 }
 
 const emptyExercise = (): ExerciseDraft => ({ name: "", sets: "", reps: "", weight: "" });
+const TYPES = ["push", "pull", "legs", "cardio"];
 
 export function Workout() {
   const { upsert } = useLog();
   const day = todayStr();
-  const [type, setType] = useState("");
+  const [type, setType] = useState("push");
   const [duration, setDuration] = useState("");
   const [notes, setNotes] = useState("");
   const [exercises, setExercises] = useState<ExerciseDraft[]>([emptyExercise()]);
@@ -37,7 +38,7 @@ export function Workout() {
   }
 
   function applyTemplate(t: NonNullable<typeof templates>[number]) {
-    setType(t.type ?? "");
+    setType(t.type ?? "push");
     if (t.exercises && t.exercises.length > 0) {
       setExercises(
         t.exercises.map((e) => ({
@@ -80,7 +81,7 @@ export function Workout() {
       });
     }
 
-    setType("");
+    setType("push");
     setDuration("");
     setNotes("");
     setExercises([emptyExercise()]);
@@ -102,96 +103,131 @@ export function Workout() {
   }
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Log a workout</h1>
+    <div>
+      <LogHeader title="log a workout" />
 
       {templates && templates.length > 0 && (
-        <div className="space-y-2">
-          <button
-            type="button"
-            className="text-sm text-primary"
-            onClick={() => setShowTemplates((v) => !v)}
-          >
+        <div className="mb-4">
+          <button type="button" className="text-sm font-medium text-primary" onClick={() => setShowTemplates((v) => !v)}>
             {showTemplates ? "Hide templates" : `Use a template (${templates.length})`}
           </button>
           {showTemplates && (
-            <div className="space-y-2">
+            <div className="mt-2 space-y-2">
               {templates.map((t) => (
-                <Card
+                <button
                   key={t.id}
-                  className="flex cursor-pointer items-center justify-between py-3"
+                  type="button"
                   onClick={() => applyTemplate(t)}
+                  className="flex w-full items-center justify-between rounded-2xl border border-line bg-white p-3.5 text-left shadow-card"
                 >
                   <div>
-                    <p className="text-sm font-medium">{t.name}</p>
-                    <p className="text-xs capitalize text-muted-foreground">
-                      {t.exercises?.length ?? 0} exercises
-                    </p>
+                    <p className="text-sm font-semibold capitalize">{t.name}</p>
+                    <p className="text-xs text-ink-faint">{t.exercises?.length ?? 0} exercises</p>
                   </div>
-                  <span className="text-xs text-muted-foreground">used {t.use_count}×</span>
-                </Card>
+                  <span className="text-xs text-ink-faint">used {t.use_count}×</span>
+                </button>
               ))}
             </div>
           )}
         </div>
       )}
 
-      <Card>
-        <form onSubmit={save} className="space-y-3">
-          <Field label="Type">
-            <Input value={type} onChange={(e) => setType(e.target.value)} placeholder="push / pull / legs / cardio" />
-          </Field>
-          <Field label="Duration (min)">
-            <Input type="number" inputMode="numeric" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="—" />
-          </Field>
+      <form onSubmit={save}>
+        <Segmented options={TYPES.map((t) => ({ value: t, label: t }))} value={type} onChange={setType} />
 
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Exercises</p>
-            {exercises.map((x, i) => (
-              <div key={i} className="grid grid-cols-12 gap-2">
-                <Input className="col-span-5" value={x.name} onChange={(e) => updateExercise(i, { name: e.target.value })} placeholder="Name" />
-                <Input className="col-span-2" type="number" inputMode="numeric" value={x.sets} onChange={(e) => updateExercise(i, { sets: e.target.value })} placeholder="sets" />
-                <Input className="col-span-2" type="number" inputMode="numeric" value={x.reps} onChange={(e) => updateExercise(i, { reps: e.target.value })} placeholder="reps" />
-                <Input className="col-span-3" type="number" inputMode="decimal" value={x.weight} onChange={(e) => updateExercise(i, { weight: e.target.value })} placeholder="kg" />
+        <label className="mb-1.5 mt-[18px] block text-[13px] font-medium text-ink-soft">duration</label>
+        <div className="relative">
+          <input
+            type="number"
+            inputMode="numeric"
+            value={duration}
+            onChange={(e) => setDuration(e.target.value)}
+            placeholder="—"
+            className="h-12 w-full rounded-xl border border-input bg-white px-3.5 pr-12 font-mono text-[15px] text-ink outline-none placeholder:text-ink-faint focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/30"
+          />
+          <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[13px] text-ink-faint">min</span>
+        </div>
+
+        <div className="mb-2 mt-[18px] flex items-center justify-between">
+          <span className="text-[13px] font-medium text-ink-soft">exercises</span>
+          <span className="font-mono text-xs text-ink-faint">{exercises.filter((x) => x.name.trim()).length}</span>
+        </div>
+        <div className="space-y-2.5">
+          {exercises.map((x, i) => (
+            <div key={i} className="rounded-[14px] border border-line bg-white p-3.5">
+              <input
+                value={x.name}
+                onChange={(e) => updateExercise(i, { name: e.target.value })}
+                placeholder="exercise name"
+                className="w-full bg-transparent text-sm font-semibold text-ink outline-none placeholder:font-normal placeholder:text-ink-faint"
+              />
+              <div className="mt-3 flex gap-2">
+                {(["sets", "reps", "weight"] as const).map((field) => (
+                  <div key={field} className="flex-1">
+                    <div className="mb-1 text-[10.5px] lowercase tracking-[0.05em] text-ink-faint">
+                      {field === "weight" ? "kg" : field}
+                    </div>
+                    <input
+                      type="number"
+                      inputMode={field === "weight" ? "decimal" : "numeric"}
+                      value={x[field]}
+                      onChange={(e) => updateExercise(i, { [field]: e.target.value } as Partial<ExerciseDraft>)}
+                      className="h-[38px] w-full rounded-[9px] border border-line bg-white text-center font-mono text-sm text-ink outline-none focus-visible:border-primary"
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
-            <Button type="button" variant="ghost" size="sm" onClick={() => setExercises((xs) => [...xs, emptyExercise()])}>
-              + Add exercise
-            </Button>
-          </div>
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => setExercises((xs) => [...xs, emptyExercise()])}
+          className="mt-2.5 flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-dashed border-[#DDE2E7] text-sm font-semibold text-primary"
+        >
+          <Plus className="h-3.5 w-3.5" strokeWidth={2.2} /> add exercise
+        </button>
 
-          <Field label="Notes">
-            <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="optional" />
-          </Field>
-          <div className="flex gap-2">
-            <Button type="submit" className="flex-1">Save workout</Button>
-            <Button type="button" variant="outline" onClick={saveAsTemplate}>
-              Save template
-            </Button>
-          </div>
-        </form>
-      </Card>
+        <label className="mb-1.5 mt-4 block text-[13px] font-medium text-ink-soft">
+          notes <span className="font-normal text-ink-faint">· optional</span>
+        </label>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="how did it go?"
+          className="min-h-[58px] w-full rounded-xl border border-input bg-white p-3.5 text-sm leading-relaxed text-[#3A434F] outline-none placeholder:text-ink-faint focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/30"
+        />
 
-      <section className="space-y-2">
-        <h2 className="text-sm text-muted-foreground">Today</h2>
-        {today && today.length === 0 && (
-          <p className="text-sm text-muted-foreground">No workouts logged yet.</p>
-        )}
-        {today?.map((w) => {
-          const count = todayExercises?.filter((x) => x.workout_id === w.id).length ?? 0;
-          return (
-            <Card key={w.id} className="flex items-center justify-between py-3">
-              <div>
-                <p className="text-sm font-medium capitalize">{w.type || "Workout"}</p>
-                <p className="text-xs text-muted-foreground">
-                  {count} exercise{count === 1 ? "" : "s"}
-                  {w.duration_min ? ` · ${w.duration_min} min` : ""}
-                </p>
+        <Button type="submit" className="mt-[18px] h-[52px] w-full">Save workout</Button>
+        <Button type="button" variant="ghost" className="mt-2 w-full" onClick={saveAsTemplate}>
+          Save as template
+        </Button>
+      </form>
+
+      <SectionLabel className="mb-3 mt-7">today</SectionLabel>
+      {today && today.length === 0 ? (
+        <p className="text-sm text-ink-faint">No workouts logged yet.</p>
+      ) : (
+        <div className="space-y-2.5">
+          {today?.map((w) => {
+            const count = todayExercises?.filter((x) => x.workout_id === w.id).length ?? 0;
+            return (
+              <div key={w.id} className="flex items-center gap-3 rounded-[18px] border border-line bg-white p-4 shadow-card">
+                <div className="flex h-[38px] w-[38px] items-center justify-center rounded-[11px] bg-tint text-primary">
+                  <Dumbbell className="h-5 w-5" strokeWidth={1.7} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold capitalize">{w.type || "workout"}</p>
+                  <p className="text-xs text-ink-faint">
+                    {count} exercise{count === 1 ? "" : "s"}
+                  </p>
+                </div>
+                {w.duration_min ? <span className="font-mono text-[13px] text-ink-soft">{w.duration_min} min</span> : null}
               </div>
-            </Card>
-          );
-        })}
-      </section>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
