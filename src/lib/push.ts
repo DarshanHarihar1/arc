@@ -38,39 +38,49 @@ export async function enablePush(): Promise<{ ok: boolean; error?: string }> {
     return { ok: false, error: "Notification permission was not granted." };
   }
 
-  const reg = await navigator.serviceWorker.ready;
-  let sub = await reg.pushManager.getSubscription();
-  if (!sub) {
-    sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    });
-  }
+  // Everything past the permission grant can reject (the SW never becomes ready,
+  // pushManager.subscribe is refused, the network is down). Catch it so the UI
+  // always gets a result back instead of being left stuck after the prompt.
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) return { ok: false, error: "Not signed in." };
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return { ok: false, error: "Not signed in." };
 
-  const res = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/push-subscribe`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/push-subscribe`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          subscription: sub.toJSON(),
+          userAgent: navigator.userAgent,
+        }),
       },
-      body: JSON.stringify({
-        subscription: sub.toJSON(),
-        userAgent: navigator.userAgent,
-      }),
-    },
-  );
-  if (!res.ok) {
-    return { ok: false, error: `Couldn’t save subscription (${res.status}).` };
+    );
+    if (!res.ok) {
+      return { ok: false, error: `Couldn’t save subscription (${res.status}).` };
+    }
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Couldn’t enable reminders.",
+    };
   }
-  return { ok: true };
 }
 
 // VAPID public key (URL-safe base64) -> ArrayBuffer for applicationServerKey.
