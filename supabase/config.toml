@@ -1,0 +1,12 @@
+# Supabase CLI config. Replace project_id with your project ref before
+# `supabase link` / `supabase functions deploy`.
+project_id = "your-project-ref"
+
+[functions.push-subscribe]
+# Browser calls this with the user's JWT; the platform verifies it.
+verify_jwt = true
+
+[functions.reminder-dispatch]
+# Called by pg_cron with the shared CRON_SECRET (not a Supabase JWT), so the
+# platform gateway must not require a JWT. The function checks the secret itself.
+verify_jwt = false

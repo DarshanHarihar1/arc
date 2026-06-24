@@ -40,11 +40,21 @@ export async function flushOutbox(): Promise<void> {
         }
         await db.outbox.delete(item.seq!);
       } catch (err) {
-        // Auth errors: try a refresh then stop; everything else (network) retries later.
-        const status = (err as { status?: number } | null)?.status;
-        if (status === 401 || status === 403) {
+        const e = err as { status?: number; code?: string } | null;
+        // Expired/invalid JWT: refresh and stop; the next flush resumes from this item.
+        if (e?.status === 401 || e?.status === 403 || e?.code === "PGRST301") {
           await supabase.auth.refreshSession();
+          break;
         }
+        // Any other server-side rejection (a PostgREST/Postgres error code is present) is
+        // deterministic — retrying the identical payload will fail forever and would wedge
+        // the FIFO queue behind it. Drop the poison item so the rest drains; the row stays
+        // in Dexie (still _dirty), surfaced locally rather than lost silently.
+        if (e?.code) {
+          await db.outbox.delete(item.seq!);
+          continue;
+        }
+        // Transient (offline / network / 5xx without a code): stop and retry later.
         break;
       }
     }

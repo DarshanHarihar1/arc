@@ -86,12 +86,67 @@ The Supabase MCP tool calls in this session are currently auto-rejected with
 
 If you'd rather not, just do sections 1–5 yourself and paste me the project URL + anon key.
 
-## 7. Push (Phase 3 — not needed yet)
+## 7. Push & reminders (Phase 3)
 
-When we build reminders:
+This wires the reminder pipeline: client subscribe → `push-subscribe` →
+`push_subscriptions`, and `pg_cron` (1/min) → `reminder-dispatch` → Web Push.
 
-- Generate a **VAPID** keypair; store the **private** key as an Edge Function secret,
-  ship the **public** key to the client (`VITE_VAPID_PUBLIC_KEY`).
-- Store the **service-role key** and a **cron secret** as Edge Function / DB secrets
-  (never in the frontend).
-- Deploy the Edge Functions and schedule the `pg_cron` job.
+### 7.1 Generate a VAPID keypair
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Keep both keys. The **public** key is safe to ship to the client; the **private**
+key is a server secret — never commit it or put it in the frontend `.env`.
+
+- **Public key** → frontend env `VITE_VAPID_PUBLIC_KEY` (in `.env`, rebuild the app).
+
+### 7.2 Set Edge Function secrets
+
+Pick a long random `CRON_SECRET` (e.g. `openssl rand -hex 32`). Then either via the
+CLI or the dashboard (**Edge Functions → Secrets**):
+
+```bash
+supabase secrets set \
+  VAPID_PUBLIC_KEY=<public>  VAPID_PRIVATE_KEY=<private> \
+  VAPID_SUBJECT=mailto:you@example.com \
+  CRON_SECRET=<random>
+```
+
+`SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are injected
+automatically — you don't set those.
+
+### 7.3 Deploy the Edge Functions
+
+```bash
+supabase functions deploy push-subscribe
+supabase functions deploy reminder-dispatch
+```
+
+`supabase/config.toml` sets `verify_jwt = true` for `push-subscribe` (browser calls
+it with the user JWT) and `false` for `reminder-dispatch` (cron calls it with the
+`CRON_SECRET` bearer, which the function checks itself).
+
+### 7.4 Store the cron secrets in Vault & schedule
+
+Migration `0007` reads the project URL and cron secret from Vault. Create them once
+(**Database → SQL Editor**), using the **same** `CRON_SECRET` from 7.2:
+
+```sql
+select vault.create_secret('https://<project-ref>.supabase.co', 'project_url');
+select vault.create_secret('<same CRON_SECRET>',                 'cron_secret');
+```
+
+Then apply migration `0007_reminder_dispatch_cron.sql` (MCP / SQL editor / `db push`)
+to schedule the every-minute job. Verify with `select * from cron.job;`.
+
+### 7.5 Test end-to-end
+
+- Open the installed PWA, go to **Settings → Reminders → Enable reminders**, grant
+  permission (on iPhone this only works from the home-screen install, iOS 16.4+).
+  Confirm a row lands in `push_subscriptions`.
+- Add a reminder a minute or two out. Within the next minute the device should get a
+  notification; tapping it deep-links into the app.
+- Idempotency: invoking `reminder-dispatch` twice in the same minute inserts one
+  `reminder_dispatch_log` row and sends one push.

@@ -35,6 +35,8 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         navigateFallback: "/index.html",
+        // Custom push / notificationclick handlers folded into the generated SW.
+        importScripts: ["/push-sw.js"],
         runtimeCaching: [
           {
             // Cache GET data reads stale-while-revalidate; never auth/storage writes.

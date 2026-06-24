@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/auth/AuthProvider";
 import { supabase } from "@/lib/supabase";
 import { MedicationsManager } from "@/components/MedicationsManager";
+import { NotificationsCard } from "@/components/NotificationsCard";
+import { RemindersManager } from "@/components/RemindersManager";
 
 export function Settings() {
   const { signOut } = useAuth();
@@ -21,10 +23,12 @@ export function Settings() {
         <p className="text-sm">{email ?? "…"}</p>
       </Card>
       <MedicationsManager />
+      <NotificationsCard />
+      <RemindersManager />
 
       <Card className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Goals, reminders, and notifications are added in later phases.
+          Goals and weekly review are added in later phases.
         </p>
         <Button variant="outline" onClick={signOut}>
           Sign out
