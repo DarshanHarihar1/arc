@@ -2,19 +2,22 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/db/db";
 import { useLog, newId } from "@/sync/useLog";
 import { todayStr } from "@/lib/day";
+import { useProfile } from "@/data/profile";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 const QUICK_AMOUNTS = [150, 250, 350, 500];
-const GOAL_ML = 3000;
 
 export function Water() {
   const { upsert } = useLog();
   const day = todayStr();
 
+  const { data: profile } = useProfile();
+  const goalMl = profile?.water_goal_ml ?? 3000;
+
   const entries = useLiveQuery(() => db.water_log.where("day").equals(day).toArray(), [day]);
   const total = (entries ?? []).reduce((sum, e) => sum + e.amount_ml, 0);
-  const pct = Math.min(100, Math.round((total / GOAL_ML) * 100));
+  const pct = Math.min(100, Math.round((total / goalMl) * 100));
 
   async function add(ml: number) {
     const now = new Date().toISOString();
@@ -35,7 +38,7 @@ export function Water() {
         <div className="flex items-end justify-between">
           <div>
             <p className="text-3xl font-semibold tabular-nums">{total} ml</p>
-            <p className="text-xs text-muted-foreground">of {GOAL_ML} ml goal ({pct}%)</p>
+            <p className="text-xs text-muted-foreground">of {goalMl} ml goal ({pct}%)</p>
           </div>
         </div>
 

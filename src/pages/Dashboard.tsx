@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, type DailyCheckin } from "@/db/db";
@@ -5,8 +6,13 @@ import { todayStr } from "@/lib/day";
 import { isGreen } from "@/lib/score";
 import { currentStreak, bestStreak, type DayResult } from "@/lib/streak";
 import { useProfile } from "@/data/profile";
+import { useIsStandalone } from "@/lib/usePwaDisplayMode";
+import { isSubscribed, enablePush } from "@/lib/push";
 import { ScoreRing } from "@/components/ScoreRing";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+
+const NUDGE_DISMISSED_KEY = "arc:push-nudge-dismissed";
 
 const quickLinks = [
   { to: "/log/food", label: "Meal" },
@@ -27,6 +33,27 @@ export function Dashboard() {
   const day = todayStr();
   const { data: profile } = useProfile();
   const greenThreshold = profile?.green_threshold ?? 80;
+
+  const standalone = useIsStandalone();
+  const [showNudge, setShowNudge] = useState(false);
+
+  useEffect(() => {
+    if (!standalone) return;
+    if (localStorage.getItem(NUDGE_DISMISSED_KEY)) return;
+    isSubscribed().then((subscribed) => {
+      if (!subscribed) setShowNudge(true);
+    });
+  }, [standalone]);
+
+  async function handleEnablePush() {
+    await enablePush();
+    setShowNudge(false);
+  }
+
+  function dismissNudge() {
+    localStorage.setItem(NUDGE_DISMISSED_KEY, "1");
+    setShowNudge(false);
+  }
 
   const checkins = useLiveQuery(() => db.daily_checkins.toArray(), []);
   const rows = checkins ?? [];
@@ -57,6 +84,16 @@ export function Dashboard() {
           {today ? "Edit" : "Check in"}
         </Link>
       </header>
+
+      {showNudge && (
+        <Card className="flex items-center justify-between gap-3 py-3">
+          <p className="text-sm">Enable reminders to stay on track.</p>
+          <div className="flex shrink-0 gap-2">
+            <Button size="sm" onClick={handleEnablePush}>Enable</Button>
+            <Button size="sm" variant="outline" onClick={dismissNudge}>Later</Button>
+          </div>
+        </Card>
+      )}
 
       <Card className="flex items-center gap-5">
         <ScoreRing score={score} />

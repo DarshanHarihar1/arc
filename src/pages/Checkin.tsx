@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/db/db";
 import { useLog, newId } from "@/sync/useLog";
-import { todayStr } from "@/lib/day";
+import { todayStr, prevDay } from "@/lib/day";
 import { computeScore, isGreen, DEFAULT_CATEGORIES, type Category } from "@/lib/score";
 import { useProfile } from "@/data/profile";
 import { Card } from "@/components/ui/card";
@@ -25,6 +25,7 @@ export function Checkin() {
   const { upsert } = useLog();
   const navigate = useNavigate();
   const day = todayStr();
+  const yesterday = prevDay(day);
 
   const { data: profile } = useProfile();
   const stepGoal = profile?.step_goal ?? 8000;
@@ -38,6 +39,11 @@ export function Checkin() {
   const medRows = useLiveQuery(() => db.medication_logs.toArray(), []);
   const stepsRows = useLiveQuery(() => db.steps_log.where("day").equals(day).toArray(), [day]);
   const waterRows = useLiveQuery(() => db.water_log.where("day").equals(day).toArray(), [day]);
+  // Yesterday's steps — used as a hint so the user knows their recent baseline.
+  const yesterdaySteps = useLiveQuery(
+    () => db.steps_log.where("day").equals(yesterday).first(),
+    [yesterday],
+  );
 
   const existing = checkinRows?.[0];
 
@@ -79,6 +85,7 @@ export function Checkin() {
   }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const score = computeScore(answers, enabledCategories);
+  const visibleQuestions = QUESTIONS.filter((q) => enabledCategories.includes(q.key));
 
   async function submit() {
     await upsert("daily_checkins", {
@@ -96,9 +103,6 @@ export function Checkin() {
     navigate("/");
   }
 
-  // Only show questions for categories that are enabled.
-  const visibleQuestions = QUESTIONS.filter((q) => enabledCategories.includes(q.key));
-
   return (
     <div className="space-y-4">
       <header>
@@ -108,7 +112,15 @@ export function Checkin() {
 
       {visibleQuestions.map((q) => (
         <Card key={q.key} className="flex items-center justify-between">
-          <p className="text-sm font-medium">{q.label}</p>
+          <div>
+            <p className="text-sm font-medium">{q.label}</p>
+            {/* Yesterday's step count shown as a baseline hint (spec §4.1.12 risk mitigation) */}
+            {q.key === "steps" && yesterdaySteps && (
+              <p className="text-xs text-muted-foreground">
+                Yesterday: {yesterdaySteps.steps.toLocaleString()} steps
+              </p>
+            )}
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <Button
               size="sm"

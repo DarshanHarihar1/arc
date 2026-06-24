@@ -15,9 +15,11 @@ interface PhotoRow {
 }
 
 const BUCKET = "progress-photos";
+const MEAL_BUCKET = "meal-photos";
 const SIGNED_URL_SECONDS = 3600;
 
 const KEY = ["progress_photos"];
+const MEAL_KEY = ["meal_photos"];
 
 export function Photos() {
   const { session } = useAuth();
@@ -26,6 +28,26 @@ export function Photos() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { data: mealPhotos = [] } = useQuery({
+    queryKey: MEAL_KEY,
+    queryFn: async (): Promise<Array<{ id: string; logged_at: string; title: string; url: string }>> => {
+      const { data, error } = await supabase
+        .from("food_logs")
+        .select("id,logged_at,title,photo_path")
+        .not("photo_path", "is", null)
+        .order("logged_at", { ascending: false });
+      if (error) throw error;
+      return Promise.all(
+        (data ?? []).map(async (r) => {
+          const { data: signed } = await supabase.storage
+            .from(MEAL_BUCKET)
+            .createSignedUrl(r.photo_path as string, SIGNED_URL_SECONDS);
+          return { id: r.id, logged_at: r.logged_at, title: r.title, url: signed?.signedUrl ?? "" };
+        }),
+      );
+    },
+  });
 
   const { data: photos = [] } = useQuery({
     queryKey: KEY,
@@ -128,6 +150,26 @@ export function Photos() {
           </div>
         ))}
       </div>
+
+      {mealPhotos.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-medium text-muted-foreground">Meal photos</h2>
+          <div className="grid grid-cols-2 gap-3">
+            {mealPhotos.map((p) => (
+              <div key={p.id} className="space-y-1">
+                {p.url && (
+                  <img
+                    src={p.url}
+                    alt={p.title}
+                    className="aspect-square w-full rounded-lg object-cover"
+                  />
+                )}
+                <p className="text-xs text-muted-foreground text-center truncate">{p.title}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
