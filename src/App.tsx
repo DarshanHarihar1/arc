@@ -3,6 +3,8 @@ import { AppLayout } from "@/components/AppLayout";
 import { RouteGuard } from "@/auth/RouteGuard";
 import { Onboarding } from "@/pages/Onboarding";
 import { Dashboard } from "@/pages/Dashboard";
+import { Weight } from "@/pages/Weight";
+import { History } from "@/pages/History";
 import { Checkin } from "@/pages/Checkin";
 import { Progress } from "@/pages/Progress";
 import { Photos } from "@/pages/Photos";
@@ -25,6 +27,8 @@ export default function App() {
         <Route element={<RouteGuard />}>
           <Route element={<AppLayout />}>
             <Route index element={<Dashboard />} />
+            <Route path="weight" element={<Weight />} />
+            <Route path="history" element={<History />} />
             <Route path="log/food" element={<Food />} />
             <Route path="log/workout" element={<Workout />} />
             <Route path="log/medicine" element={<Medicine />} />

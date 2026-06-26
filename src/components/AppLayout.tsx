@@ -1,11 +1,11 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Home, CircleCheck, SlidersHorizontal } from "lucide-react";
+import { Home, Weight, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOnline } from "@/lib/useOnline";
 
 const tabs = [
   { to: "/", label: "Today", icon: Home, end: true },
-  { to: "/checkin", label: "Check-in", icon: CircleCheck },
+  { to: "/weight", label: "Weight", icon: Weight },
   { to: "/settings", label: "Settings", icon: SlidersHorizontal },
 ];
 

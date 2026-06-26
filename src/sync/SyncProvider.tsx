@@ -1,9 +1,16 @@
 import { useEffect, type ReactNode } from "react";
 import { useAuth } from "@/auth/AuthProvider";
 import { flushOutbox } from "@/sync/outbox";
+import { pullAll } from "@/sync/pull";
 
-// Wires the outbox flush triggers from §4.7.4: online event, app foreground
-// (visibilitychange), a periodic timer, and post-login.
+// Wires the sync triggers from §4.7.4: online event, app foreground
+// (visibilitychange), a periodic timer, and post-login. Each fires both halves —
+// pull server rows down into the local store, and push pending local writes up.
+function sync() {
+  void pullAll();
+  void flushOutbox();
+}
+
 export function SyncProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();
   const userId = session?.user.id;
@@ -11,13 +18,13 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!userId) return;
 
-    void flushOutbox(); // post-login / on mount
+    sync(); // post-login / on mount
 
-    const onOnline = () => void flushOutbox();
+    const onOnline = () => sync();
     const onVisible = () => {
-      if (document.visibilityState === "visible") void flushOutbox();
+      if (document.visibilityState === "visible") sync();
     };
-    const timer = window.setInterval(() => void flushOutbox(), 30_000);
+    const timer = window.setInterval(() => sync(), 30_000);
 
     window.addEventListener("online", onOnline);
     document.addEventListener("visibilitychange", onVisible);
